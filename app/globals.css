@@ -2,20 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ၁။ အစ်ကို့ရဲ့ Font Import (ဒါကို ကျွန်တော် ပြန်ထည့်ပေးထားပါတယ်) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #e5e5e5;
+@layer base {
+  :root {
+    /* ၂။ အနီရောင် Theme အတွက် လိုအပ်သော အရောင်များ (ဒါတွေမရှိရင် Button အရောင်မပေါ်ပါ) */
+    /* အစ်ကို့ရဲ့ #0a0a0a ကို HSL ပုံစံ ပြောင်းထည့်ပေးထားပါတယ် */
+    --background: 0 0% 4%; 
+    --foreground: 0 0% 90%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+
+    /* ဒါက အစ်ကိုလိုချင်တဲ့ အနီရောင် (Red Color) ပါ */
+    --primary: 355 85% 55%; 
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 355 85% 55%;
+
+    --radius: 0.5rem;
+  }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif; /* အစ်ကို့ရဲ့ Font Setting */
+  }
 }
 
-/* Custom Scrollbar */
+/* ၃။ အစ်ကို့ရဲ့ Custom Scrollbar (ဒါလည်း ပြန်ထည့်ပေးထားပါတယ်) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
