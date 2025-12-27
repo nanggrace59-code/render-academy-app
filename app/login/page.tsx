@@ -1,13 +1,14 @@
 'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabaseClient'; // Supabase ကို တိုက်ရိုက်ခေါ်သုံးပါမယ်
+import { supabase } from '@/supabaseClient'; 
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Password အတွက် State အသစ်
+  const [password, setPassword] = useState(''); 
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Loading ပြဖို့
+  const [loading, setLoading] = useState(false); 
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -16,25 +17,24 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Supabase Database ထဲမှာ Email ရော Password ရော တိုက်စစ်ခြင်း
+      // Database စစ်ဆေးခြင်း
       const { data: user, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', email)
-        .eq('password', password) // Password ကိုပါ စစ်ပါပြီ
+        .eq('password', password) 
         .single();
 
       if (error || !user) {
-        // Data မရှိရင် သို့မဟုတ် Error တက်ရင်
         setError('User not found or wrong password.');
       } else {
-        // Data မှန်ရင် Role အလိုက် လမ်းခွဲပေးခြင်း
+        // Role အလိုက် လမ်းခွဲပေးခြင်း
         if (user.role === 'student') {
             router.push('/student/dashboard');
         } else if (user.role === 'teacher') {
             router.push('/teacher/dashboard');
         } else {
-            router.push('/'); // Admin or others
+            router.push('/'); 
         }
       }
     } catch (err) {
@@ -44,7 +44,6 @@ export default function LoginPage() {
     }
   };
 
-  // စမ်းသပ်ရန်အတွက် Quick Fill Function
   const fillCredentials = () => {
     setEmail('yinang723@gmail.com');
     setPassword('render123');
@@ -79,7 +78,7 @@ export default function LoginPage() {
                    />
                </div>
 
-               {/* Password Input (အသစ်ထည့်ထားသော အပိုင်း) */}
+               {/* Password Input */}
                <div>
                    <label className="block text-xs font-medium text-neutral-400 mb-2 ml-1">Password</label>
                    <input 
@@ -104,4 +103,15 @@ export default function LoginPage() {
                </button>
            </form>
 
-           {/* Quick Fill Button
+           {/* Quick Fill Button */}
+           <div className="mt-12 text-center">
+               <p className="text-[10px] uppercase text-neutral-700 mb-3 tracking-widest">Simulation Access</p>
+               <button onClick={fillCredentials} className="text-xs text-neutral-600 hover:text-white transition-colors">
+                 Fill Test Credentials
+               </button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
