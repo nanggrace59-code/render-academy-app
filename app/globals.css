@@ -2,13 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ၁။ အစ်ကို့ရဲ့ Font Import (ဒါကို ကျွန်တော် ပြန်ထည့်ပေးထားပါတယ်) */
+/* အစ်ကို့ရဲ့ Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   :root {
-    /* ၂။ အနီရောင် Theme အတွက် လိုအပ်သော အရောင်များ (ဒါတွေမရှိရင် Button အရောင်မပေါ်ပါ) */
-    /* အစ်ကို့ရဲ့ #0a0a0a ကို HSL ပုံစံ ပြောင်းထည့်ပေးထားပါတယ် */
+    /* ပြဿနာဖြေရှင်းချက်: Hex (#) အစား HSL ဂဏန်းများကို ပြောင်းလဲထားခြင်း */
+    
+    /* #0a0a0a -> 0 0% 4% (တထပ်တည်းတူသော အမည်းရောင်ပါ) */
     --background: 0 0% 4%; 
     --foreground: 0 0% 90%;
 
@@ -18,7 +19,7 @@
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
 
-    /* ဒါက အစ်ကိုလိုချင်တဲ့ အနီရောင် (Red Color) ပါ */
+    /* အနီရောင် Theme (Button များအတွက်) */
     --primary: 355 85% 55%; 
     --primary-foreground: 0 0% 100%;
 
@@ -48,11 +49,11 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif; /* အစ်ကို့ရဲ့ Font Setting */
+    font-family: 'Inter', sans-serif;
   }
 }
 
-/* ၃။ အစ်ကို့ရဲ့ Custom Scrollbar (ဒါလည်း ပြန်ထည့်ပေးထားပါတယ်) */
+/* အစ်ကို့ရဲ့ Custom Scrollbar (ဒီအတိုင်းထားပါတယ်) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
