@@ -1,10 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Note: In a real Next.js app, these would be process.env.NEXT_PUBLIC_SUPABASE_URL
-// For this environment, we check if they exist, otherwise we fallback to mock mode in the API service.
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
+// ၁။ NEXT_PUBLIC_ လို့ ပြောင်းလိုက်ပါပြီ (ဒါမှ Vercel က Key နဲ့ ကိုက်မှာပါ)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = (supabaseUrl && supabaseKey) 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : null;
+// ၂။ createClient ကို တိုက်ရိုက်ပြန်ပေးလိုက်ပါ (Null check ဖြုတ်လိုက်ပါပြီ)
+export const supabase = createClient(supabaseUrl, supabaseKey);
