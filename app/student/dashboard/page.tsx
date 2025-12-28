@@ -14,7 +14,7 @@ import {
   LayoutGrid, MonitorPlay
 } from 'lucide-react';
 
-// --- WRAPPER FOR AUTHENTICATION ---
+// --- WRAPPER FOR AUTHENTICATION & HEADER ---
 export default function StudentDashboardWrapper() {
     const router = useRouter();
     const [user, setUser] = useState<Profile | null>(null);
@@ -40,16 +40,17 @@ export default function StudentDashboardWrapper() {
 
     const isMasterClass = user.enrolled_class === 'master_class';
     const mainTitle = isMasterClass ? 'MASTER CLASS' : 'VISUALIZATION CLASS';
-    const subTitle = isMasterClass ? 'Architecture Modeling' : 'Visualization Foundations';
+    const subTitle = isMasterClass ? 'ARCHITECTURE MODELING' : 'VISUALIZATION FOUNDATIONS';
 
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
+            {/* --- GLOBAL HEADER --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: RTA Box (White Text) & Dynamic Class Info */}
+                 {/* LEFT: 'R' Box (White Text) & Dynamic Class Info */}
                  <div className="flex items-center gap-4">
-                    {/* FIXED: RTA in red box with white font */}
-                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
-                        RTA
+                    {/* FIXED: 'R' only in red box */}
+                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-xl tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                        R
                     </div>
                     <div>
                         <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
@@ -57,18 +58,21 @@ export default function StudentDashboardWrapper() {
                     </div>
                  </div>
 
-                 {/* RIGHT: User Info Only (Removed the right RTA box) */}
+                 {/* RIGHT: User Info Only (REMOVED RTA RED BOX) */}
                  <div className="flex items-center gap-6">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-white">{user.full_name}</p>
                         <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Level {user.current_level}</p>
                     </div>
+                    
+                    {/* Logout Button */}
                     <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500">
                         <LogOut size={16}/>
                     </button>
                  </div>
             </header>
             
+            {/* Main Content Injector */}
             <StudentWorkspace user={user} />
         </div>
     );
@@ -81,7 +85,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
     const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
     
     // UI State
-    const [viewMode, setViewMode] = useState<'workspace' | 'gallery'>('workspace'); // New state for Left Sidebar toggle
+    const [viewMode, setViewMode] = useState<'workspace' | 'gallery'>('workspace');
     const [context, setContext] = useState<'interior' | 'exterior'>('interior');
     const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
 
@@ -112,13 +116,12 @@ function StudentWorkspace({ user }: { user: Profile }) {
                 setSelectedHistoryId(null); 
             }
         } else {
-            // Load Gallery Data
             const gal = await getAcademyGallery();
             setGallerySubmissions(gal);
         }
     };
 
-    // --- 1. INITIALIZATION CHECK (Cleaned Up UI) ---
+    // --- 1. INITIALIZATION CHECK (Simple UI No Icons) ---
     if (!user.references?.interior || !user.references?.exterior) {
         
         const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
@@ -143,6 +146,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
         }
 
         return (
+            // Note: Sidebar is NOT rendered here, so it only shows AFTER init.
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
                 <div className="max-w-4xl w-full text-center space-y-10">
                      <div>
@@ -155,7 +159,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         {['interior', 'exterior'].map((type) => {
                             const preview = type === 'interior' ? refPreviews.interior : refPreviews.exterior;
                             return (
-                                <div key={type} className="group relative aspect-video bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden hover:border-[#d90238]/50 transition-all shadow-2xl">
+                                <div key={type} className="group relative aspect-video bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden hover:border-[#d90238]/50 transition-all shadow-2xl cursor-pointer">
                                     
                                     {!preview && (
                                         <input type="file" accept="image/*" onChange={(e) => handleRefChange(e, type as any)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" />
@@ -164,7 +168,6 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                     {preview ? (
                                         <>
                                             <img src={preview} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"/>
-                                            {/* CLEANED UP: Only showing X button, removed CheckCircle and "Ready" text */}
                                             <button 
                                                 onClick={() => removeRef(type as any)}
                                                 className="absolute top-3 right-3 z-30 w-8 h-8 bg-black/50 backdrop-blur hover:bg-[#d90238] rounded-full flex items-center justify-center text-white transition-colors"
@@ -173,9 +176,11 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                             </button>
                                         </>
                                     ) : (
+                                        // FIXED: Removed Icon, just showing TEXT as per your image reference
                                         <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:scale-105 transition-transform duration-500">
-                                            {/* CLEANED UP: Removed large Upload icon circle */}
-                                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors">Click to Upload {type}</span>
+                                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors">
+                                                CLICK TO UPLOAD {type}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
@@ -193,7 +198,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
         )
     }
 
-    // --- 2. MAIN DASHBOARD LOGIC (Post-Init) ---
+    // --- 2. MAIN DASHBOARD LOGIC (Sidebar shows up here) ---
     
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
@@ -228,10 +233,9 @@ function StudentWorkspace({ user }: { user: Profile }) {
     };
 
     return (
-        // Added Flex row container for Left Sidebar + Main Content
         <div className="flex-1 flex overflow-hidden relative">
             
-            {/* NEW: THIN LEFT SIDEBAR NAVIGATION */}
+            {/* LEFT SIDEBAR NAVIGATION (Only visible after Init) */}
             <div className="w-16 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 shrink-0 z-50">
                  <div className="flex flex-col gap-4">
                     <button 
@@ -251,15 +255,15 @@ function StudentWorkspace({ user }: { user: Profile }) {
                  </div>
             </div>
 
-            {/* MAIN CONTENT AREA (Conditional Rendering) */}
+            {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex relative min-w-0">
                 {viewMode === 'workspace' ? (
-                    // --- VIEW A: WORKSPACE (Existing UI) ---
+                    // --- VIEW A: WORKSPACE ---
                     <>
                         {/* VISUAL AREA */}
                         <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0">
                             
-                            {/* Protocol Status & Context Switcher Floating Elements */}
+                            {/* Protocol Status & Context Switcher */}
                             <div className="absolute top-8 left-8 z-30 pointer-events-none select-none">
                                 <div className="flex items-center gap-4">
                                     <div className="w-1 h-12 bg-[#d90238] shadow-[0_0_15px_#d90238]"></div>
@@ -381,7 +385,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         </div>
                     </>
                 ) : (
-                    // --- VIEW B: GALLERY (New View) ---
+                    // --- VIEW B: GALLERY ---
                     <div className="flex-1 bg-[#020202] p-8 overflow-y-auto animate-in fade-in">
                         <div className="mb-8">
                             <h1 className="text-3xl font-black text-white tracking-tight">Academy Gallery</h1>
