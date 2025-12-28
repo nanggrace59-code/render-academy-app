@@ -40,12 +40,18 @@ export default function StudentDashboardWrapper() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
-            {/* --- GLOBAL HEADER (CLEANEST VERSION) --- */}
+            {/* --- GLOBAL HEADER --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: Just Text info (NO RED BOX HERE) */}
-                 <div>
-                    <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
-                    <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                 {/* LEFT: Class Info */}
+                 <div className="flex items-center gap-4">
+                    {/* R Logo */}
+                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-xl tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                        R
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
+                        <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                    </div>
                  </div>
                  {/* RIGHT: Empty (Clean) */}
             </header>
@@ -101,22 +107,17 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         }
     };
 
-    // --- RESET REFERENCES ("Go Back") ---
+    // --- HELPER FUNCTIONS (MOVED TO TOP LEVEL TO FIX SYNTAX ERROR) ---
+
     const handleResetReferences = async () => {
         if (confirm("Are you sure you want to reset your master references?")) {
             setIsResetting(true);
             try {
-                // 1. Delete from DB
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                
-                // 2. INSTANT UI UPDATE (Fixes Freeze)
-                const updatedUser = { 
-                    ...user, 
-                    references: undefined 
-                };
+                // Force State Update
+                const updatedUser = { ...user, references: undefined };
                 setUser(updatedUser); 
-
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
@@ -126,48 +127,54 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         }
     };
 
-
-    // --- 1. INITIALIZATION CHECK (Clean UI) ---
-    if (!user.references?.interior || !user.references?.exterior) {
-        
-        const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
-            if(e.target.files?.[0]) {
-                const f = e.target.files[0];
-                setRefFiles(prev => ({...prev, [type]: f}));
-                setRefPreviews(prev => ({...prev, [type]: URL.createObjectURL(f)}));
-            }
-        };
-
-        const removeRef = (type: 'interior' | 'exterior') => {
-            setRefFiles(prev => ({...prev, [type]: null}));
-            setRefPreviews(prev => ({...prev, [type]: ''}));
-        };
-
-        const saveRefs = async () => {
-            if(!refFiles.interior && !user.references?.interior) return;
-            if(!refFiles.exterior && !user.references?.exterior) return;
-            
-            setIsInitSaving(true);
-            
-            try {
-                // 1. Save to DB
-                await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
-                
-                // 2. Fetch fresh data
-                const updatedProfile = await login(user.email);
-                
-                // 3. INSTANT UI UPDATE (Fixes Freeze)
-                if (updatedProfile) {
-                    setUser(updatedProfile); 
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Upload failed. Please try again.");
-            } finally {
-                setIsInitSaving(false);
-            }
+    const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
+        if(e.target.files?.[0]) {
+            const f = e.target.files[0];
+            setRefFiles(prev => ({...prev, [type]: f}));
+            setRefPreviews(prev => ({...prev, [type]: URL.createObjectURL(f)}));
         }
+    };
 
+    const removeRef = (type: 'interior' | 'exterior') => {
+        setRefFiles(prev => ({...prev, [type]: null}));
+        setRefPreviews(prev => ({...prev, [type]: ''}));
+    };
+
+    const saveRefs = async () => {
+        if(!refFiles.interior && !user.references?.interior) return;
+        if(!refFiles.exterior && !user.references?.exterior) return;
+        
+        setIsInitSaving(true);
+        
+        try {
+            await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
+            // Instant Update
+            const updatedProfile = await login(user.email);
+            if (updatedProfile) {
+                setUser(updatedProfile); 
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Upload failed. Please try again.");
+        } finally {
+            setIsInitSaving(false);
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!renderFile) return;
+        setIsSubmitting(true);
+        const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
+        await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
+        await loadData();
+        setRenderFile(null);
+        setRenderPreview('');
+        setStudentNote('');
+        setIsSubmitting(false);
+    };
+
+    // --- 1. INITIALIZATION CHECK ---
+    if (!user.references?.interior || !user.references?.exterior) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
                 <div className="max-w-4xl w-full text-center space-y-10">
@@ -230,17 +237,50 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         viewStatus = 'DRAFT';
     }
 
-    const handleSubmit = async () => {
-        if (!renderFile) return;
-        setIsSubmitting(true);
-        const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
-        await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
-        await loadData();
-        setRenderFile(null);
-        setRenderPreview('');
-        setStudentNote('');
-        setIsSubmitting(false);
-    };
-
     return (
-        <div className="flex-1 flex overflow-
+        <div className="flex-1 flex overflow-hidden relative">
+            
+            {/* LEFT SIDEBAR */}
+            <div className="w-16 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center justify-between py-6 shrink-0 z-50">
+                 <div className="flex flex-col gap-6 items-center">
+                    {/* R LOGO (Corrected) */}
+                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-xl tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                        R
+                    </div>
+
+                    <div className="w-8 h-px bg-white/10"></div>
+
+                    <button onClick={() => setViewMode('workspace')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${viewMode === 'workspace' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="My Workspace"><MonitorPlay size={20}/></button>
+                    <button onClick={() => setViewMode('gallery')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="Student Gallery"><LayoutGrid size={20}/></button>
+                 </div>
+                 
+                 <div className="flex flex-col gap-4">
+                    <button 
+                        onClick={handleResetReferences} 
+                        disabled={isResetting}
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-[#d90238] transition-all disabled:opacity-50" 
+                        title="Reset References"
+                    >
+                        {isResetting ? <Loader2 className="animate-spin" size={20}/> : <Settings size={20}/>}
+                    </button>
+                    <button onClick={() => { localStorage.removeItem('activeUserEmail'); window.location.href = '/login'; }} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500" title="Logout">
+                        <LogOut size={16}/>
+                    </button>
+                 </div>
+            </div>
+
+            {/* MAIN CONTENT AREA */}
+            <div className="flex-1 flex relative min-w-0">
+                {viewMode === 'workspace' ? (
+                    <>
+                        {/* VISUAL AREA */}
+                        <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center">
+                            <div className="flex-1 relative w-full h-full bg-[#020202]">
+                                {currentRefImage && currentRenderImage ? (
+                                    <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
+                                ) : currentRefImage ? (
+                                    <div className="w-full h-full relative group flex items-center justify-center">
+                                         <img src={currentRefImage} className="max-w-full max-h-full object-contain opacity-30 grayscale transition-all duration-700"/>
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center opacity-20"><p className="text-neutral-500 font-mono text-xs
