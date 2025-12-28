@@ -43,11 +43,17 @@ export default function StudentDashboardWrapper() {
             {/* --- GLOBAL HEADER --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
                  {/* LEFT: Class Info */}
-                 <div>
-                    <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
-                    <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                 <div className="flex items-center gap-4">
+                    {/* RTA Logo */}
+                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                        RTA
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
+                        <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                    </div>
                  </div>
-                 {/* RIGHT: Clean */}
+                 {/* RIGHT: Clean (Removed everything else) */}
             </header>
             
             {/* Main Content Injector */}
@@ -58,6 +64,7 @@ export default function StudentDashboardWrapper() {
 
 // --- MAIN WORKSPACE LOGIC ---
 function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profile) => void }) {
+    const router = useRouter();
     // Data State
     const [history, setHistory] = useState<Submission[]>([]);
     const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
@@ -107,13 +114,11 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             try {
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                // Force fetch updated profile
-                const updatedProfile = await login(user.email);
-                if (updatedProfile) setUser(updatedProfile);
+                // Reload page to refresh state cleanly
+                window.location.reload(); 
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
-            } finally {
                 setIsResetting(false);
             }
         }
@@ -146,19 +151,14 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                 // 1. Save to DB
                 await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
                 
-                // 2. Fetch the UPDATED profile immediately
-                const updatedProfile = await login(user.email);
-                
-                // 3. Update State (This switches the screen instantly without reload)
-                if (updatedProfile) {
-                    setUser(updatedProfile);
-                } else {
-                    window.location.reload(); // Fallback
-                }
+                // 2. Force Reload to prevent freezing
+                // (This ensures the new data is fetched freshly from the server)
+                window.location.reload();
+
             } catch (error) {
                 console.error(error);
                 setIsInitSaving(false);
-                alert("Something went wrong uploading images.");
+                alert("Something went wrong uploading images. Please try again.");
             }
         }
 
