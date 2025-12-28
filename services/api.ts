@@ -97,3 +97,29 @@ export const submitAssignment = async (
 
   return !error;
 };
+// Teacher Dashboard အတွက် လိုအပ်သော Functions များ
+
+export const getAllStudents = async (): Promise<Profile[]> => {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student');
+  
+  // Data ပြန်ပို့ရာတွင် UI အတွက် လိုအပ်သော format အတိုင်း map လုပ်ပေးနိုင်ပါတယ်
+  // လောလောဆယ် Database အတိုင်း ပြန်ပို့ပါမယ်
+  return data?.map(profile => ({
+      ...profile,
+      // Database column -> UI types conversion if needed
+      references: (profile.ref_interior_url && profile.ref_exterior_url) ? {
+          interior: profile.ref_interior_url,
+          exterior: profile.ref_exterior_url
+      } : undefined
+  })) || [];
+};
+
+export const getAllSubmissions = async (): Promise<Submission[]> => {
+  const { data } = await supabase
+    .from('submissions')
+    .select('*');
+  return data || [];
+};
