@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabaseClient'; // Import supabase directly for reset function
+import { supabase } from '@/supabaseClient';
 import { 
   login, saveStudentReferences, getStudentSubmissions, submitAssignment, getAcademyGallery 
 } from '@/services/api';
@@ -138,8 +138,13 @@ function StudentWorkspace({ user }: { user: Profile }) {
         const saveRefs = async () => {
             if(!refFiles.interior && !user.references?.interior) return;
             if(!refFiles.exterior && !user.references?.exterior) return;
+            
             setIsInitSaving(true);
+            
+            // Save to DB
             await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
+            
+            // FORCE RELOAD TO ENTER WORKSPACE
             window.location.reload();
         }
 
