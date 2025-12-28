@@ -1,38 +1,30 @@
 'use client';
 
-import React, { useEffect, useState } from 'react'; // useContext ဖယ်လိုက်ပါပြီ (မလိုတော့လို့ပါ)
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Profile, Submission } from '@/types';
-import { getStudentSubmissions, submitAssignment, saveStudentReferences, login, getAcademyGallery } from '@/services/api'; // getProfile အစား login သုံးပါတယ်
-import { ImageSlider } from '@/components/ImageSlider';
-// Icons
 import { 
-  CheckCircle, Upload, Loader2, AlertCircle, History, 
-  Home, Building, PenTool, Quote, Layers, Layout, LogOut
+  login, saveStudentReferences, getStudentSubmissions, submitAssignment, getAcademyGallery 
+} from '@/services/api';
+import { ImageSlider } from '@/components/ImageSlider'; // This component needs to handle the Zoom/Pan logic separately
+import { Profile, Submission } from '@/types';
+import { 
+  Loader2, LogOut, Home, Building, History, 
+  Upload, CheckCircle, AlertCircle, Clock, 
+  ChevronRight, Layers, FileText, Send 
 } from 'lucide-react';
 
-// ==========================================
-// 1. WRAPPER COMPONENT (Vercel Integration)
-// ==========================================
+// --- WRAPPER FOR AUTHENTICATION ---
 export default function StudentDashboardWrapper() {
     const router = useRouter();
     const [user, setUser] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // LocalStorage မှ User ကို ရှာခြင်း (AuthContext အစား)
         const email = localStorage.getItem('activeUserEmail');
-        if (!email) {
-            router.push('/login');
-            return;
-        }
-
+        if (!email) { router.push('/login'); return; }
         login(email).then(profile => {
-             if (!profile) {
-                 router.push('/login');
-             } else {
-                 setUser(profile);
-             }
+             if (!profile) router.push('/login');
+             else setUser(profile);
              setLoading(false);
         });
     }, []);
@@ -42,336 +34,354 @@ export default function StudentDashboardWrapper() {
         router.push('/login');
     };
 
-    if (loading) return <div className="flex items-center justify-center h-screen bg-[#050505] text-neutral-500 font-mono text-xs"><Loader2 className="animate-spin mr-2"/> Loading Secure Environment...</div>;
+    if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-[#de0443]" size={32} /></div>;
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-sans relative">
-            {/* Logout Button (Added for convenience) */}
-            <button onClick={handleLogout} className="absolute top-6 right-6 z-50 text-neutral-500 hover:text-white transition-colors">
-                <LogOut size={16}/>
-            </button>
+        <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#de0443] selection:text-white">
+            <header className="fixed top-0 left-0 right-0 h-16 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-50 flex items-center justify-between px-6">
+                 <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#de0443] rounded flex items-center justify-center font-black text-black">R</div>
+                    <span className="font-bold tracking-tight text-white hidden sm:block">RENDER <span className="text-neutral-500">ACADEMY</span></span>
+                 </div>
+                 <div className="flex items-center gap-4">
+                    <div className="text-right hidden sm:block">
+                        <p className="text-xs font-bold text-white uppercase tracking-wider">{user.full_name}</p>
+                        <p className="text-[10px] text-[#de0443] font-mono uppercase">LVL {String(user.current_level).padStart(2,'0')} • {user.enrolled_class === 'master_class' ? 'ARCHITECT' : 'VISUALIZER'}</p>
+                    </div>
+                    <button onClick={handleLogout} className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"><LogOut size={14}/></button>
+                 </div>
+            </header>
             
-            {/* Original Component */}
-            <StudentDashboardInner user={user} viewMode="workspace" />
+            <div className="pt-16 h-screen overflow-hidden flex flex-col">
+                <StudentWorkspace user={user} />
+            </div>
         </div>
     );
 }
 
-// ==========================================
-// 2. ORIGINAL COMPONENT (Your Code)
-// ==========================================
-interface StudentDashboardProps {
-    user: Profile;
-    viewMode: 'workspace' | 'gallery';
-}
+// --- MAIN WORKSPACE LOGIC ---
+function StudentWorkspace({ user }: { user: Profile }) {
+    // Data State
+    const [history, setHistory] = useState<Submission[]>([]);
+    const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
+    
+    // UI State
+    const [context, setContext] = useState<'interior' | 'exterior'>('interior');
+    const [viewMode, setViewMode] = useState<'upload' | 'history'>('upload'); // Toggle between upload form and history view
+    const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
 
-const StudentDashboardInner: React.FC<StudentDashboardProps> = ({ user, viewMode }) => {
-  const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
-  const [allMySubmissions, setAllMySubmissions] = useState<Submission[]>([]);
-  const [currentLevelHistory, setCurrentLevelHistory] = useState<Submission[]>([]);
-  const [viewingHistoryId, setViewingHistoryId] = useState<string | 'new_draft'>('new_draft');
-  const [pastSubmissions, setPastSubmissions] = useState<Submission[]>([]);
-  const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
-  const [modalSubmission, setModalSubmission] = useState<Submission | null>(null);
-  const [modalHistory, setModalHistory] = useState<Submission[]>([]);
-  
-  // Setup & Form State
-  const [interiorRefFile, setInteriorRefFile] = useState<File | null>(null);
-  const [exteriorRefFile, setExteriorRefFile] = useState<File | null>(null);
-  const [interiorPreview, setInteriorPreview] = useState<string>('');
-  const [exteriorPreview, setExteriorPreview] = useState<string>('');
-  const [viewContext, setViewContext] = useState<'interior' | 'exterior'>('interior');
-  const [renderFile, setRenderFile] = useState<File | null>(null);
-  const [renderPreview, setRenderPreview] = useState<string>('');
-  const [studentMessage, setStudentMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingRefs, setIsSavingRefs] = useState(false);
+    // Form State
+    const [renderFile, setRenderFile] = useState<File | null>(null);
+    const [renderPreview, setRenderPreview] = useState<string>('');
+    const [studentNote, setStudentNote] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [user.id, user.current_level, viewMode]);
+    // Initialization State
+    const [refFiles, setRefFiles] = useState<{interior: File | null, exterior: File | null}>({ interior: null, exterior: null });
+    const [refPreviews, setRefPreviews] = useState<{interior: string, exterior: string}>({ interior: '', exterior: '' });
+    const [isInitSaving, setIsInitSaving] = useState(false);
 
-  const loadData = async () => {
-    if (viewMode === 'workspace') {
-        const allSubs = await getStudentSubmissions(user.id);
-        setAllMySubmissions(allSubs);
+    useEffect(() => { loadSubmissions(); }, []);
+
+    const loadSubmissions = async () => {
+        const all = await getStudentSubmissions(user.id);
+        const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
+                                    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        setHistory(currentLevelSubs);
         
-        const currentLevelSubs = allSubs
-            .filter(s => s.assignment_number === user.current_level)
-            .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-        
-        setCurrentLevelHistory(currentLevelSubs);
         const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
         setActiveSubmission(latest);
-
-        // Deduplicate & Sort Past
-        const past = allSubs.filter(s => s.assignment_number < user.current_level && s.status === 'approved');
-        const uniqueMap = new Map<number, Submission>();
-        past.forEach(sub => { if (!uniqueMap.has(sub.assignment_number)) uniqueMap.set(sub.assignment_number, sub); });
-        setPastSubmissions(Array.from(uniqueMap.values()).sort((a, b) => b.assignment_number - a.assignment_number));
         
-        if (latest && latest.status === 'rejected') setViewingHistoryId('new_draft');
-    } else {
-        const gal = await getAcademyGallery();
-        setGallerySubmissions(gal);
-    }
-  };
+        // If latest is approved or pending, show it. If rejected, ready for new upload.
+        if (latest && latest.status !== 'rejected') {
+            setSelectedHistoryId(latest.id);
+        } else {
+            setSelectedHistoryId(null); // Null means "New Draft" mode
+        }
+    };
 
-  const handleSetupFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      if (type === 'interior') { setInteriorRefFile(file); setInteriorPreview(url); }
-      else { setExteriorRefFile(file); setExteriorPreview(url); }
-    }
-  };
+    // --- 1. INITIALIZATION CHECK ---
+    if (!user.references?.interior || !user.references?.exterior) {
+        const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
+            if(e.target.files?.[0]) {
+                const f = e.target.files[0];
+                setRefFiles(prev => ({...prev, [type]: f}));
+                setRefPreviews(prev => ({...prev, [type]: URL.createObjectURL(f)}));
+            }
+        };
+        const saveRefs = async () => {
+            if(!refFiles.interior && !user.references?.interior) return;
+            if(!refFiles.exterior && !user.references?.exterior) return;
+            setIsInitSaving(true);
+            await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
+            window.location.reload();
+        }
 
-  const handleSaveReferences = async () => {
-     if (!interiorRefFile && !exteriorRefFile) return; // Allow partial upload fix
-     setIsSavingRefs(true);
-     await saveStudentReferences(user.id, interiorRefFile, exteriorRefFile);
-     window.location.reload(); 
-  };
-
-  const handleSubmit = async () => {
-     if(!renderFile) return;
-     setIsSubmitting(true);
-     const refUrl = viewContext === 'interior' ? user.references?.interior || '' : user.references?.exterior || '';
-     await submitAssignment(user.id, user.current_level, refUrl, renderFile, studentMessage);
-     await loadData();
-     setIsSubmitting(false);
-     setRenderFile(null);
-     setRenderPreview('');
-     setStudentMessage('');
-  };
-
-  const openModal = (sub: Submission) => {
-      const history = allMySubmissions
-        .filter(s => s.assignment_number === sub.assignment_number)
-        .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-      setModalHistory(history);
-      setModalSubmission(sub);
-  };
-
-  // --- PROJECT INITIALIZATION ---
-  if (viewMode === 'workspace' && (!user.references?.interior || !user.references?.exterior)) {
-      return (
-        <div className="max-w-5xl mx-auto flex flex-col justify-center items-center min-h-[80vh]">
-            <div className="glass-panel p-10 rounded-2xl w-full text-center">
-                <h1 className="text-3xl font-bold text-white mb-2">Project Initialization</h1>
-                <p className="text-neutral-500 mb-10 max-w-lg mx-auto">Upload master reference images to establish the ground truth for your visualization curriculum.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                    {['interior', 'exterior'].map((type) => (
-                        <div key={type} className="bg-black/40 border border-white/5 p-6 rounded-xl hover:border-red-600/50 transition-colors group">
-                            <h3 className="font-bold text-white uppercase text-xs mb-4 tracking-widest">{type} Reference</h3>
-                            <div className="relative h-64 border-2 border-dashed border-white/10 rounded-lg overflow-hidden bg-black flex items-center justify-center group-hover:bg-white/5 transition-colors">
-                                <input type="file" accept="image/*" onChange={(e) => handleSetupFileChange(e, type as any)} className="absolute inset-0 opacity-0 cursor-pointer z-20" />
-                                {(type === 'interior' ? interiorPreview : exteriorPreview) || (type === 'interior' ? user.references?.interior : user.references?.exterior) ? (
-                                    <img src={(type === 'interior' ? interiorPreview : exteriorPreview) || (type === 'interior' ? user.references?.interior : user.references?.exterior)} className="w-full h-full object-cover"/>
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+                <div className="max-w-4xl w-full text-center space-y-8">
+                     <div>
+                        <span className="text-[#de0443] text-xs font-bold tracking-[0.2em] uppercase border border-[#de0443]/30 px-3 py-1 rounded-full bg-[#de0443]/5">Project Initialization</span>
+                        <h1 className="text-4xl font-bold text-white mt-4">Upload Master References</h1>
+                        <p className="text-neutral-500 mt-2">These will serve as the ground truth for all future assignments.</p>
+                     </div>
+                     <div className="grid grid-cols-2 gap-6">
+                        {['interior', 'exterior'].map((type) => (
+                            <div key={type} className="group relative aspect-video bg-black/40 border border-white/10 rounded-xl overflow-hidden hover:border-[#de0443]/50 transition-all">
+                                <input type="file" accept="image/*" onChange={(e) => handleRefChange(e, type as any)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" />
+                                {(type === 'interior' ? refPreviews.interior : refPreviews.exterior) ? (
+                                    <img src={type === 'interior' ? refPreviews.interior : refPreviews.exterior} className="w-full h-full object-cover opacity-50 group-hover:opacity-80 transition-opacity"/>
                                 ) : (
-                                    <div className="flex flex-col items-center text-neutral-600">
-                                        <Upload size={32} className="mb-2 group-hover:text-red-600 transition-colors"/>
-                                        <span className="text-xs font-bold uppercase">Upload Image</span>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#de0443] transition-colors"><Upload size={20}/></div>
+                                        <span className="text-xs font-bold uppercase tracking-widest">{type} Reference</span>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                     </div>
+                     <button onClick={saveRefs} disabled={isInitSaving} className="bg-[#de0443] hover:bg-[#b00335] text-white px-8 py-4 rounded-lg font-bold uppercase tracking-widest text-sm transition-all w-full max-w-sm disabled:opacity-50">
+                        {isInitSaving ? 'Initializing Protocol...' : 'Initialize Project'}
+                     </button>
                 </div>
-                <button onClick={handleSaveReferences} disabled={(!interiorPreview && !user.references?.interior) || isSavingRefs} className="bg-red-600 hover:bg-red-700 text-white px-10 py-4 font-bold uppercase tracking-widest rounded-lg shadow-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isSavingRefs ? 'Initializing...' : 'Confirm References'}
-                </button>
             </div>
-        </div>
-      );
-  }
+        )
+    }
 
-  // --- WORKSPACE LOGIC ---
-  const isPending = activeSubmission?.status === 'pending';
-  const canUpload = !activeSubmission || activeSubmission.status === 'rejected';
-  
-  let displayRender = '', displayRef = '';
-  if (viewingHistoryId === 'new_draft') {
-      displayRender = renderPreview;
-      displayRef = viewContext === 'interior' ? user.references?.interior || '' : user.references?.exterior || '';
-  } else {
-      const h = currentLevelHistory.find(x => x.id === viewingHistoryId);
-      if(h) { displayRender = h.render_image_url; displayRef = h.reference_image_url; }
-  }
+    // --- 2. MAIN DASHBOARD ---
+    
+    // Derived States
+    const isPending = activeSubmission?.status === 'pending';
+    const isRejected = activeSubmission?.status === 'rejected';
+    const isApproved = activeSubmission?.status === 'approved';
+    const canUpload = !activeSubmission || isRejected;
 
-  return (
-    <div className="max-w-[1400px] mx-auto pb-20 p-6">
-       
-       {/* HEADER */}
-       <div className="flex justify-between items-end mb-10 border-b border-white/5 pb-6">
-           <div>
-               <div className="flex items-center gap-3 mb-2">
-                   <div className={`w-2 h-2 rounded-full ${viewMode === 'workspace' ? 'bg-red-600 shadow-[0_0_10px_#de0443]' : 'bg-emerald-500'}`}/>
-                   <h2 className={`text-xs font-bold uppercase tracking-[0.2em] ${viewMode === 'workspace' ? 'text-red-600' : 'text-emerald-500'}`}>
-                       {viewMode === 'workspace' ? 'Active Protocol' : 'Academy Archive'}
-                   </h2>
-               </div>
-               <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
-                   {viewMode === 'workspace' ? `Assignment ${String(user.current_level).padStart(2,'0')}` : 'Student Gallery'}
-               </h1>
-           </div>
-       </div>
+    // View Logic
+    const currentRefImage = context === 'interior' ? user.references.interior : user.references.exterior;
+    
+    // Determine what render to show
+    let currentRenderImage = renderPreview; // Default to upload preview
+    let viewStatus = 'DRAFT'; // DRAFT, PENDING, REJECTED, APPROVED
 
-       {viewMode === 'workspace' ? (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-           {/* REJECTION ALERT */}
-           {activeSubmission?.status === 'rejected' && (
-               <div className="glass-panel border-l-4 border-l-red-600 p-6 mb-8 rounded-r-lg flex gap-4 items-start bg-red-900/10">
-                   <AlertCircle className="text-red-600 shrink-0 mt-1" size={20}/>
-                   <div>
-                       <h4 className="font-bold text-sm uppercase mb-1 text-white">Revision Required</h4>
-                       <p className="text-neutral-400 text-sm leading-relaxed max-w-2xl">{activeSubmission.teacher_comment}</p>
-                   </div>
-               </div>
-           )}
+    if (selectedHistoryId) {
+        // Viewing History Mode
+        const sub = history.find(h => h.id === selectedHistoryId);
+        if (sub) {
+            currentRenderImage = sub.render_image_url;
+            viewStatus = sub.status.toUpperCase();
+        }
+    }
 
-           {/* MAIN WORKSPACE CARD */}
-           <div className="flex flex-col lg:flex-row gap-8 mb-16">
-               {/* LEFT: Image Area */}
-               <div className="flex-1 min-w-0">
-                   {/* Context Tabs */}
-                   {viewingHistoryId === 'new_draft' && (
-                       <div className="flex gap-1 mb-4">
-                           {['interior', 'exterior'].map((ctx) => (
-                               <button 
-                                key={ctx} 
-                                onClick={() => setViewContext(ctx as any)} 
-                                className={`px-6 py-2.5 rounded-t-lg text-[10px] font-bold uppercase tracking-widest border-t border-x transition-all ${viewContext === ctx ? 'bg-[#0a0a0a] border-white/10 text-white' : 'bg-transparent border-transparent text-neutral-600 hover:text-white'}`}
-                               >
-                                   {ctx}
-                               </button>
-                           ))}
-                       </div>
-                   )}
+    const handleSubmit = async () => {
+        if (!renderFile) return;
+        setIsSubmitting(true);
+        const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
+        await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
+        await loadSubmissions();
+        setRenderFile(null);
+        setRenderPreview('');
+        setStudentNote('');
+        setIsSubmitting(false);
+    };
 
-                   <div className="h-[650px] w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#020202]">
-                       {displayRender && displayRef ? (
-                           <ImageSlider referenceImage={displayRef} renderImage={displayRender} className="h-full border-0 rounded-none"/>
-                       ) : (
-                           <div className="w-full h-full flex flex-col items-center justify-center text-neutral-700 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50">
-                               <Layers size={48} className="mb-4 opacity-20"/>
-                               <p className="font-mono text-xs uppercase">Awaiting Render Upload</p>
-                           </div>
-                       )}
-                   </div>
-               </div>
-
-               {/* RIGHT: Controls & History */}
-               <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 pt-12">
-                   
-                   {/* History Timeline */}
-                   <div className="glass-panel p-6 rounded-xl border border-white/5 bg-[#0a0a0a]">
-                       <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Version History</h3>
-                       <div className="space-y-3 relative">
-                           {/* Connecting Line */}
-                           <div className="absolute left-3 top-2 bottom-2 w-px bg-white/5 -z-10"></div>
-                           
-                           {currentLevelHistory.map((sub, idx) => (
-                               <button 
-                                key={sub.id} 
-                                onClick={() => setViewingHistoryId(sub.id)}
-                                className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all group ${viewingHistoryId === sub.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-                               >
-                                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold z-10 border ${
-                                       sub.status === 'rejected' ? 'bg-red-900/20 border-red-500 text-red-500' : 
-                                       sub.status === 'pending' ? 'bg-amber-900/20 border-amber-500 text-amber-500' : 'bg-emerald-900/20 border-emerald-500 text-emerald-500'
-                                   }`}>
-                                       {idx + 1}
-                                   </div>
-                                   <div className="text-left">
-                                       <div className="text-xs text-white font-bold">Attempt {idx+1}</div>
-                                       <div className="text-[10px] text-neutral-500 font-mono uppercase">{sub.status}</div>
-                                   </div>
-                               </button>
-                           ))}
-
-                           {canUpload && (
-                               <button 
-                                onClick={() => setViewingHistoryId('new_draft')}
-                                className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all group ${viewingHistoryId === 'new_draft' ? 'bg-red-600/20 border border-red-600/30' : 'hover:bg-white/5'}`}
-                               >
-                                   <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center z-10 shadow-glow">
-                                       <PenTool size={10} />
-                                   </div>
-                                   <div className="text-left">
-                                       <div className="text-xs text-white font-bold">New Draft</div>
-                                       <div className="text-[10px] text-red-500 font-mono uppercase">In Progress</div>
-                                   </div>
-                               </button>
-                           )}
-                       </div>
-                   </div>
-
-                   {/* Upload Actions */}
-                   {canUpload && viewingHistoryId === 'new_draft' && (
-                       <div className="glass-panel p-6 rounded-xl animate-in slide-in-from-right-4 duration-500 border border-white/5 bg-[#0a0a0a]">
-                           <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Upload size={12}/> Submission</h3>
-                           
-                           <div className="mb-4">
-                               <div className={`relative h-24 border border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-colors ${renderPreview ? 'border-red-600/50 bg-red-600/5' : 'border-white/10 hover:border-red-600/30 hover:bg-white/5'}`}>
-                                    <input type="file" accept="image/*" onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                            setRenderFile(e.target.files[0]);
-                                            setRenderPreview(URL.createObjectURL(e.target.files[0]));
-                                        }
-                                    }} className="absolute inset-0 opacity-0 z-20 cursor-pointer"/>
-                                    {renderPreview ? (
-                                        <div className="flex flex-col items-center">
-                                            <CheckCircle className="text-red-600 mb-1" size={20}/>
-                                            <span className="text-[10px] text-red-600 font-bold uppercase">Ready</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center text-neutral-500">
-                                            <Upload size={16} className="mb-1"/>
-                                            <span className="text-[9px] uppercase font-bold">Select Render</span>
-                                        </div>
-                                    )}
-                               </div>
-                           </div>
-
-                           <input 
-                            type="text" 
-                            value={studentMessage} 
-                            onChange={(e) => setStudentMessage(e.target.value)} 
-                            placeholder="Add a note..." 
-                            className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-xs text-white mb-4 focus:border-red-600 focus:outline-none"
-                           />
-
-                           <button 
-                            onClick={handleSubmit} 
-                            disabled={!renderPreview || isSubmitting}
-                            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider shadow-glow transition-all disabled:opacity-50 disabled:shadow-none"
-                           >
-                               {isSubmitting ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'Submit Work'}
-                           </button>
-                       </div>
-                   )}
-               </div>
-           </div>
-        </div>
-       ) : (
-        // GALLERY VIEW
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in zoom-in-95">
-            {gallerySubmissions.map(sub => (
-                <div key={sub.id} className="glass-card rounded-xl overflow-hidden cursor-pointer group border border-white/5 bg-[#0a0a0a]">
-                    <div className="aspect-square relative">
-                        <img src={sub.render_image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Gallery"/>
-                        <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors"/>
-                        <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-                            <p className="text-white font-bold text-sm">Assignment {String(sub.assignment_number).padStart(2,'0')}</p>
-                            <p className="text-[10px] text-neutral-400 font-mono">ID: {sub.student_id.substring(0,6)}</p>
+    return (
+        <div className="flex-1 flex overflow-hidden">
+            
+            {/* LEFT: MAIN VISUAL AREA (Immersive) */}
+            <div className="flex-1 flex flex-col bg-[#020202] relative">
+                {/* Protocol Header */}
+                <div className="absolute top-6 left-6 z-20 pointer-events-none">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-[#de0443] w-1 h-8"></div>
+                        <div>
+                            <h2 className="text-white font-bold text-xl leading-none">Assignment {String(user.current_level).padStart(2,'0')}</h2>
+                            <p className="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-1">Active Protocol • {context}</p>
                         </div>
                     </div>
                 </div>
-            ))}
+
+                {/* Context Switcher (Floating) */}
+                <div className="absolute top-6 right-6 z-20 flex bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-1">
+                    <button onClick={() => setContext('interior')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'interior' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-white'}`}>
+                        <Home size={12}/> Interior
+                    </button>
+                    <button onClick={() => setContext('exterior')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'exterior' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-white'}`}>
+                        <Building size={12}/> Exterior
+                    </button>
+                </div>
+
+                {/* VISUALIZER (The Slider) */}
+                <div className="flex-1 relative">
+                    {currentRefImage && currentRenderImage ? (
+                        <ImageSlider 
+                            referenceImage={currentRefImage} 
+                            renderImage={currentRenderImage} 
+                            className="w-full h-full"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20">
+                            <Layers size={64} className="text-white mb-4 opacity-50"/>
+                            <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Waiting for Render Input...</p>
+                        </div>
+                    )}
+
+                    {/* Status Badge Overlay */}
+                    <div className="absolute bottom-8 left-8 z-20">
+                        <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-2 ${
+                            viewStatus === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
+                            viewStatus === 'REJECTED' ? 'bg-[#de0443]/10 border-[#de0443]/30 text-[#de0443]' :
+                            viewStatus === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' :
+                            'bg-white/5 border-white/10 text-neutral-400'
+                        }`}>
+                            {viewStatus === 'PENDING' && <Clock size={14}/>}
+                            {viewStatus === 'REJECTED' && <AlertCircle size={14}/>}
+                            {viewStatus === 'APPROVED' && <CheckCircle size={14}/>}
+                            <span className="text-[10px] font-bold uppercase tracking-widest">{viewStatus} STATE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* RIGHT: CONTROL PANEL (Sidebar) */}
+            <div className="w-[400px] bg-[#0a0a0a] border-l border-white/5 flex flex-col shrink-0 z-30">
+                
+                {/* 1. Version Timeline */}
+                <div className="p-6 border-b border-white/5">
+                    <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <History size={12}/> Submission Timeline
+                    </h3>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {/* History Nodes */}
+                        {history.map((sub, idx) => (
+                            <button 
+                                key={sub.id} 
+                                onClick={() => setSelectedHistoryId(sub.id)}
+                                className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer`}
+                            >
+                                <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${
+                                    selectedHistoryId === sub.id ? 'bg-white text-black scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]' :
+                                    sub.status === 'rejected' ? 'border-[#de0443] text-[#de0443] bg-[#de0443]/10' :
+                                    sub.status === 'approved' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' :
+                                    'border-amber-500 text-amber-500 bg-amber-500/10'
+                                }`}>
+                                    v{idx + 1}
+                                </div>
+                                <span className={`text-[8px] font-mono uppercase ${selectedHistoryId === sub.id ? 'text-white' : 'text-neutral-600'}`}>{sub.status}</span>
+                            </button>
+                        ))}
+
+                        {/* Next Draft Node (Ghost) */}
+                        {canUpload && (
+                            <button 
+                                onClick={() => setSelectedHistoryId(null)}
+                                className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer`}
+                            >
+                                <div className={`w-8 h-8 rounded-full border border-dashed border-neutral-700 flex items-center justify-center text-neutral-500 transition-all ${selectedHistoryId === null ? 'border-[#de0443] text-[#de0443] bg-[#de0443]/10' : 'hover:border-neutral-500'}`}>
+                                    <Upload size={12}/>
+                                </div>
+                                <span className="text-[8px] font-mono uppercase text-neutral-600">Draft</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. Action Area */}
+                <div className="flex-1 p-6 flex flex-col overflow-y-auto">
+                    
+                    {/* SCENARIO A: Viewing a Historical Submission */}
+                    {selectedHistoryId && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                             {/* Teacher Feedback Block */}
+                             {history.find(h => h.id === selectedHistoryId)?.teacher_comment && (
+                                <div className="bg-[#de0443]/10 border border-[#de0443]/20 p-4 rounded-lg">
+                                    <h4 className="text-[#de0443] text-xs font-bold uppercase mb-2 flex items-center gap-2"><AlertCircle size={14}/> Instructor Feedback</h4>
+                                    <p className="text-neutral-300 text-sm leading-relaxed">
+                                        "{history.find(h => h.id === selectedHistoryId)?.teacher_comment}"
+                                    </p>
+                                </div>
+                             )}
+                             
+                             <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
+                                 <h4 className="text-neutral-500 text-[10px] font-bold uppercase mb-2">Student Note</h4>
+                                 <p className="text-neutral-400 text-sm italic">
+                                    "{history.find(h => h.id === selectedHistoryId)?.student_message || 'No notes added.'}"
+                                 </p>
+                             </div>
+
+                             {isRejected && (
+                                 <button onClick={() => setSelectedHistoryId(null)} className="w-full py-4 bg-[#de0443] hover:bg-[#b00335] text-white font-bold uppercase tracking-widest text-xs rounded-lg transition-all flex items-center justify-center gap-2">
+                                     Start Revision (v{history.length + 1}) <ChevronRight size={14}/>
+                                 </button>
+                             )}
+                        </div>
+                    )}
+
+                    {/* SCENARIO B: Uploading New Draft */}
+                    {!selectedHistoryId && canUpload && (
+                        <div className="flex flex-col h-full animate-in slide-in-from-right-4">
+                            <h3 className="text-white text-lg font-bold mb-1">Submit Assignment</h3>
+                            <p className="text-neutral-500 text-xs mb-6">Upload your latest render for review.</p>
+
+                            {/* Dropzone */}
+                            <label className={`flex-1 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all mb-6 ${renderPreview ? 'border-[#de0443] bg-[#de0443]/5' : 'border-white/10 hover:border-[#de0443]/50 hover:bg-white/5'}`}>
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                    if(e.target.files?.[0]) {
+                                        setRenderFile(e.target.files[0]);
+                                        setRenderPreview(URL.createObjectURL(e.target.files[0]));
+                                    }
+                                }}/>
+                                {renderPreview ? (
+                                    <div className="relative w-full h-full p-2">
+                                        <img src={renderPreview} className="w-full h-full object-contain rounded-lg"/>
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                            <span className="text-white text-xs font-bold uppercase">Change Image</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center text-neutral-500">
+                                        <Upload size={32} className="mb-2"/>
+                                        <span className="text-xs font-bold uppercase">Click to Upload Render</span>
+                                    </div>
+                                )}
+                            </label>
+
+                            {/* Form */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1 block">Student Notes</label>
+                                    <textarea 
+                                        value={studentNote}
+                                        onChange={(e) => setStudentNote(e.target.value)}
+                                        placeholder="Describe your process or challenges..."
+                                        className="w-full bg-black border border-white/10 rounded-lg p-3 text-sm text-white focus:border-[#de0443] focus:outline-none resize-none h-24"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={handleSubmit}
+                                    disabled={!renderPreview || isSubmitting}
+                                    className="w-full py-4 bg-[#de0443] hover:bg-[#b00335] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold uppercase tracking-widest text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(222,4,67,0.3)]"
+                                >
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Send size={14}/> Submit for Review</>}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SCENARIO C: Pending State */}
+                    {isPending && !selectedHistoryId && (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                            <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 animate-pulse">
+                                <Clock size={32}/>
+                            </div>
+                            <h3 className="text-white font-bold text-lg">Under Review</h3>
+                            <p className="text-neutral-500 text-sm mt-2">Your instructor is currently reviewing your submission. You will be notified once a decision is made.</p>
+                            <button onClick={() => setSelectedHistoryId(activeSubmission?.id || null)} className="mt-6 text-xs text-neutral-400 hover:text-white underline underline-offset-4">View Submitted Draft</button>
+                        </div>
+                    )}
+
+                </div>
+            </div>
         </div>
-       )}
-    </div>
-  );
-};
+    );
+}
