@@ -34,6 +34,7 @@ export default function StudentDashboardWrapper() {
         router.push('/login');
     };
 
+    // UPDATED COLOR to #d90238
     if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-[#d90238]" size={32} /></div>;
     if (!user) return null;
 
@@ -43,20 +44,28 @@ export default function StudentDashboardWrapper() {
     const subTitle = isMasterClass ? 'Architecture Modeling' : 'Visualization Foundations';
 
     return (
+        // UPDATED SELECTION COLOR
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: Dynamic Class Info (No Logo) */}
+                 {/* LEFT: Dynamic Class Info */}
                  <div>
                     <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
+                    {/* UPDATED COLOR */}
                     <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
                  </div>
 
-                 {/* RIGHT: User Info (Aligned) */}
+                 {/* RIGHT: User Info & RTA Logo */}
                  <div className="flex items-center gap-6">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-white">{user.full_name}</p>
                         <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Level {user.current_level}</p>
                     </div>
+                    
+                    {/* UPDATED: RTA BOX instead of R */}
+                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-black text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                        RTA
+                    </div>
+
                     <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500">
                         <LogOut size={16}/>
                     </button>
@@ -129,10 +138,10 @@ function StudentWorkspace({ user }: { user: Profile }) {
         }
 
         return (
-            // Added pb-32 to push content up slightly as requested
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
                 <div className="max-w-4xl w-full text-center space-y-10">
                      <div>
+                        {/* UPDATED COLORS to #d90238 */}
                         <span className="text-[#d90238] text-[10px] font-bold tracking-[0.3em] uppercase border border-[#d90238]/30 px-4 py-1.5 rounded-full bg-[#d90238]/5 shadow-[0_0_15px_rgba(217,2,56,0.1)]">Project Initialization</span>
                         <h1 className="text-5xl font-black text-white mt-6 mb-2 tracking-tight">Upload Master References</h1>
                         <p className="text-neutral-500 text-sm">These will serve as the ground truth for all future assignments.</p>
@@ -142,6 +151,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         {['interior', 'exterior'].map((type) => {
                             const preview = type === 'interior' ? refPreviews.interior : refPreviews.exterior;
                             return (
+                                // UPDATED HOVER BORDER COLOR
                                 <div key={type} className="group relative aspect-video bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden hover:border-[#d90238]/50 transition-all shadow-2xl">
                                     
                                     {!preview && (
@@ -151,7 +161,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                     {preview ? (
                                         <>
                                             <img src={preview} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"/>
-                                            {/* Cross Sign (X) to remove image */}
+                                            {/* UPDATED HOVER BG COLOR */}
                                             <button 
                                                 onClick={() => removeRef(type as any)}
                                                 className="absolute top-3 right-3 z-30 w-8 h-8 bg-black/50 backdrop-blur hover:bg-[#d90238] rounded-full flex items-center justify-center text-white transition-colors"
@@ -159,12 +169,14 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                                 <X size={14}/>
                                             </button>
                                             <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
+                                                {/* UPDATED ICON COLOR */}
                                                 <CheckCircle className="text-[#d90238]" size={16} />
                                                 <span className="text-xs font-bold uppercase tracking-widest text-white">{type} Ready</span>
                                             </div>
                                         </>
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:scale-105 transition-transform duration-500">
+                                            {/* UPDATED HOVER BG COLOR */}
                                             <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:bg-[#d90238] transition-colors shadow-glow">
                                                 <Upload size={24} className="text-neutral-400 group-hover:text-white"/>
                                             </div>
@@ -177,6 +189,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                      </div>
 
                      <div className="flex justify-center pt-4">
+                        {/* UPDATED BUTTON COLORS & SHADOW (using rgba(217,2,56,...) for #d90238) */}
                         <button onClick={saveRefs} disabled={isInitSaving || (!refPreviews.interior || !refPreviews.exterior)} className="bg-[#d90238] hover:bg-[#b0022d] text-white px-12 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all w-full max-w-md disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(217,2,56,0.2)] hover:shadow-[0_0_30px_rgba(217,2,56,0.4)]">
                             {isInitSaving ? 'Initializing Protocol...' : 'Initialize Project'}
                         </button>
@@ -228,9 +241,11 @@ function StudentWorkspace({ user }: { user: Profile }) {
                 {/* Protocol Status (Top Left) */}
                 <div className="absolute top-8 left-8 z-30 pointer-events-none select-none">
                     <div className="flex items-center gap-4">
-                        <div className="bg-[#d90238] w-1 h-12 shadow-[0_0_15px_#d90238]"></div>
+                        {/* UPDATED: RTA BOX and SHADOW instead of just a bar */}
+                        <div className="w-8 h-12 bg-[#d90238] rounded-sm flex items-center justify-center font-black text-black text-[10px] tracking-tighter leading-none shadow-[0_0_15px_#d90238]">RTA</div>
                         <div>
                             <div className="flex items-center gap-2 mb-1">
+                                {/* UPDATED COLOR */}
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#d90238]">Active Protocol</span>
                                 <span className="w-1 h-1 bg-neutral-600 rounded-full"></span>
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">{context} Phase</span>
@@ -242,6 +257,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
 
                 {/* Context Switcher (Top Center) */}
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 flex bg-[#111]/80 backdrop-blur-xl rounded-full border border-white/5 p-1.5 shadow-2xl">
+                    {/* UPDATED ACTIVE BG COLOR */}
                     <button 
                         onClick={() => setContext('interior')} 
                         className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'interior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}
@@ -264,6 +280,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         <div className="w-full h-full relative group">
                             <img src={currentRefImage} className="w-full h-full object-contain opacity-50 grayscale-[50%] group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700"/>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                {/* UPDATED ICON COLOR */}
                                 <Layers size={64} className="text-[#d90238] mb-4 opacity-80 shadow-glow animate-pulse"/>
                                 <p className="text-white font-bold text-lg tracking-widest uppercase mb-2">Workspace Ready</p>
                                 <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest bg-black/50 px-4 py-2 rounded-full backdrop-blur-md">Upload a render to enable comparison</p>
@@ -277,6 +294,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                     <div className="absolute bottom-8 left-8 z-20 pointer-events-none">
                         <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-2 ${
                             viewStatus === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
+                            // UPDATED REJECTED COLORS
                             viewStatus === 'REJECTED' ? 'bg-[#d90238]/10 border-[#d90238]/30 text-[#d90238]' :
                             viewStatus === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' :
                             'bg-white/5 border-white/10 text-neutral-400'
@@ -297,12 +315,14 @@ function StudentWorkspace({ user }: { user: Profile }) {
                     <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Submission Timeline</h3>
                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                         {history.map((sub, idx) => (
+                            // UPDATED REJECTED COLORS in Timeline
                             <button key={sub.id} onClick={() => setSelectedHistoryId(sub.id)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId && selectedHistoryId !== sub.id ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}>
                                 <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${selectedHistoryId === sub.id ? 'bg-white text-black scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : sub.status === 'rejected' ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : sub.status === 'approved' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-amber-500 text-amber-500 bg-amber-500/10'}`}>v{idx + 1}</div>
                                 <span className={`text-[8px] font-mono uppercase ${selectedHistoryId === sub.id ? 'text-white' : 'text-neutral-600'}`}>{sub.status}</span>
                             </button>
                         ))}
                         {canUpload && (
+                            // UPDATED DRAFT NODE COLORS
                             <button onClick={() => setSelectedHistoryId(null)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId !== null ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}>
                                 <div className={`w-10 h-10 rounded-full border border-dashed border-neutral-700 flex items-center justify-center text-neutral-500 transition-all ${selectedHistoryId === null ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : 'hover:border-neutral-500 hover:text-white'}`}><Upload size={14}/></div>
                                 <span className="text-[8px] font-mono uppercase text-neutral-600">Draft</span>
@@ -316,6 +336,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                     {selectedHistoryId ? (
                         <div className="space-y-6 animate-in slide-in-from-right-4">
                              {history.find(h => h.id === selectedHistoryId)?.teacher_comment && (
+                                // UPDATED FEEDBACK BOX COLORS
                                 <div className="bg-[#d90238]/10 border border-[#d90238]/20 p-5 rounded-xl">
                                     <h4 className="text-[#d90238] text-xs font-bold uppercase mb-2 flex items-center gap-2"><AlertCircle size={14}/> Instructor Feedback</h4>
                                     <p className="text-neutral-300 text-sm leading-relaxed font-medium">"{history.find(h => h.id === selectedHistoryId)?.teacher_comment}"</p>
@@ -326,6 +347,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                  <p className="text-neutral-400 text-sm italic">"{history.find(h => h.id === selectedHistoryId)?.student_message || 'No notes added.'}"</p>
                              </div>
                              {isLatestRejected && selectedHistoryId === latestSubmission?.id && (
+                                 // UPDATED REVISION BUTTON COLORS
                                  <button onClick={() => setSelectedHistoryId(null)} className="w-full py-4 bg-[#d90238] hover:bg-[#b0022d] text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20">Start Revision (v{history.length + 1}) <ChevronRight size={14}/></button>
                              )}
                         </div>
@@ -345,16 +367,20 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         <div className="flex flex-col h-full animate-in slide-in-from-right-4">
                             <h3 className="text-white text-lg font-bold mb-1">Submit Assignment</h3>
                             <p className="text-neutral-500 text-xs mb-8">Upload your latest render for review.</p>
+                            {/* UPDATED UPLOAD BOX BORDER/BG COLORS */}
                             <label className={`flex-1 min-h-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all mb-8 relative group ${renderPreview ? 'border-[#d90238] bg-[#d90238]/5' : 'border-white/10 hover:border-[#d90238]/50 hover:bg-white/5'}`}>
                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => { if(e.target.files?.[0]) { setRenderFile(e.target.files[0]); setRenderPreview(URL.createObjectURL(e.target.files[0])); }}}/>
                                 {renderPreview ? (
                                     <div className="relative w-full h-full p-2"><img src={renderPreview} className="w-full h-full object-contain rounded-lg"/><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg backdrop-blur-sm"><span className="text-white text-xs font-bold uppercase flex items-center gap-2"><RefreshCw size={14}/> Change Image</span></div></div>
                                 ) : (
+                                    // UPDATED UPLOAD ICON HOVER BG COLOR
                                     <div className="flex flex-col items-center text-neutral-500 group-hover:text-white transition-colors"><div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#d90238] transition-colors"><Upload size={20}/></div><span className="text-xs font-bold uppercase tracking-widest">Click to Upload Render</span></div>
                                 )}
                             </label>
                             <div className="space-y-4">
+                                {/* UPDATED TEXTAREA FOCUS COLOR */}
                                 <textarea value={studentNote} onChange={(e) => setStudentNote(e.target.value)} placeholder="Student notes..." className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#d90238] focus:outline-none resize-none h-24 placeholder:text-neutral-700"/>
+                                {/* UPDATED SUBMIT BUTTON COLORS & SHADOW */}
                                 <button onClick={handleSubmit} disabled={!renderPreview || isSubmitting} className="w-full py-4 bg-[#d90238] hover:bg-[#b0022d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(217,2,56,0.3)] hover:shadow-[0_0_30px_rgba(217,2,56,0.5)]">{isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Send size={14}/> Submit for Review</>}</button>
                             </div>
                         </div>
