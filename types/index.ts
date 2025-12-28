@@ -1,5 +1,7 @@
 export type Role = 'student' | 'teacher';
+
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+
 export type ClassType = 'master_class' | 'viz_class';
 
 export interface StudentReferences {
@@ -12,9 +14,9 @@ export interface Profile {
   email: string;
   role: Role;
   current_level: number;
-  full_name?: string;
-  enrolled_class?: ClassType;
-  references?: StudentReferences;
+  full_name?: string; // Optional for UI display
+  enrolled_class?: ClassType; // New field for class filtering
+  references?: StudentReferences; // New field for Master References
 }
 
 export interface Submission {
@@ -27,4 +29,10 @@ export interface Submission {
   student_message?: string;
   teacher_comment?: string;
   created_at?: string;
+}
+
+// Helper type for joining data in Teacher Dashboard
+export interface StudentWithSubmission extends Profile {
+  latest_submission?: Submission;
+  has_pending: boolean;
 }
