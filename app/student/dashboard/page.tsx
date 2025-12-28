@@ -30,6 +30,7 @@ export default function StudentDashboardWrapper() {
         });
     }, []);
 
+    // handleLogout unused in header currently, kept for future use if needed.
     const handleLogout = () => {
         localStorage.removeItem('activeUserEmail');
         router.push('/login');
@@ -44,32 +45,15 @@ export default function StudentDashboardWrapper() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
-            {/* --- GLOBAL HEADER --- */}
+            {/* --- GLOBAL HEADER (CLEANED UP AS REQUESTED) --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: 'R' Box (White Text) & Dynamic Class Info */}
-                 <div className="flex items-center gap-4">
-                    {/* FIXED: 'R' only in red box */}
-                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-xl tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
-                        R
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
-                        <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
-                    </div>
+                 {/* LEFT: Dynamic Class Info ONLY (RED BOX DELETED HERE) */}
+                 <div>
+                    <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
+                    <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
                  </div>
 
-                 {/* RIGHT: User Info Only (REMOVED RTA RED BOX) */}
-                 <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                        <p className="text-sm font-bold text-white">{user.full_name}</p>
-                        <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Level {user.current_level}</p>
-                    </div>
-                    
-                    {/* Logout Button */}
-                    <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500">
-                        <LogOut size={16}/>
-                    </button>
-                 </div>
+                 {/* RIGHT: CLEAR (Deleted name, level, logout) */}
             </header>
             
             {/* Main Content Injector */}
@@ -121,7 +105,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
         }
     };
 
-    // --- 1. INITIALIZATION CHECK (Simple UI No Icons) ---
+    // --- 1. INITIALIZATION CHECK (Clean UI) ---
     if (!user.references?.interior || !user.references?.exterior) {
         
         const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
@@ -146,7 +130,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
         }
 
         return (
-            // Note: Sidebar is NOT rendered here, so it only shows AFTER init.
+            // Sidebar hidden during init
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
                 <div className="max-w-4xl w-full text-center space-y-10">
                      <div>
@@ -176,7 +160,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                             </button>
                                         </>
                                     ) : (
-                                        // FIXED: Removed Icon, just showing TEXT as per your image reference
+                                        // Clean empty state text
                                         <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:scale-105 transition-transform duration-500">
                                             <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors">
                                                 CLICK TO UPLOAD {type}
@@ -198,7 +182,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
         )
     }
 
-    // --- 2. MAIN DASHBOARD LOGIC (Sidebar shows up here) ---
+    // --- 2. MAIN DASHBOARD LOGIC (Sidebar visible) ---
     
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
@@ -235,7 +219,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
     return (
         <div className="flex-1 flex overflow-hidden relative">
             
-            {/* LEFT SIDEBAR NAVIGATION (Only visible after Init) */}
+            {/* LEFT SIDEBAR NAVIGATION (Visible after Init) */}
             <div className="w-16 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 shrink-0 z-50">
                  <div className="flex flex-col gap-4">
                     <button 
@@ -263,10 +247,13 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         {/* VISUAL AREA */}
                         <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0">
                             
-                            {/* Protocol Status & Context Switcher */}
+                            {/* Protocol Status (Top Left Corner) */}
                             <div className="absolute top-8 left-8 z-30 pointer-events-none select-none">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-1 h-12 bg-[#d90238] shadow-[0_0_15px_#d90238]"></div>
+                                    {/* FIXED: REPLACED VERTICAL BAR WITH RTA RED BOX HERE */}
+                                    <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
+                                        RTA
+                                    </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-[#d90238]">Active Protocol</span>
@@ -278,6 +265,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                 </div>
                             </div>
 
+                            {/* Context Switcher (Top Center) */}
                             <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 flex bg-[#111]/80 backdrop-blur-xl rounded-full border border-white/5 p-1.5 shadow-2xl">
                                 <button onClick={() => setContext('interior')} className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'interior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}><Home size={12}/> Interior</button>
                                 <button onClick={() => setContext('exterior')} className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'exterior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}><Building size={12}/> Exterior</button>
