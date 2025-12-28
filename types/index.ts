@@ -1,5 +1,5 @@
 export type Role = 'student' | 'teacher';
-
+export type ClassType = 'master_class' | 'viz_class'; // <--- ဒါလေးပါဖို့ လိုပါတယ်
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
 
 export type ClassType = 'master_class' | 'viz_class';
@@ -14,6 +14,7 @@ export interface Profile {
   email: string;
   role: Role;
   current_level: number;
+  enrolled_class?: ClassType; // <--- ဒါလေးပါဖို့ လိုပါတယ်
   full_name?: string; // Optional for UI display
   enrolled_class?: ClassType; // New field for class filtering
   references?: StudentReferences; // New field for Master References
