@@ -1,9 +1,7 @@
-import { createSupabaseClient } from '@/utils/supabase/client';
+import { supabase } from '@/supabaseClient';
 import { Profile, Submission } from '@/types';
-import { MOCK_PROFILES, MOCK_SUBMISSIONS } from './mockData';
 
-const supabase = createSupabaseClient();
-
+// Helper: File to Base64 (ပုံကို စာသားပြောင်းခြင်း)
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -13,60 +11,70 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+// Helper: Database ပုံစံကို Frontend ပုံစံသို့ ပြောင်းခြင်း
+const mapProfile = (data: any): Profile => {
+  return {
+    ...data,
+    // Database column (ref_interior_url) ကို UI object (references.interior) သို့ ပြောင်းခြင်း
+    references: (data.ref_interior_url && data.ref_exterior_url) ? {
+      interior: data.ref_interior_url,
+      exterior: data.ref_exterior_url
+    } : undefined
+  };
+};
+
 export const login = async (email: string): Promise<Profile | null> => {
-  if (supabase) {
-    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password: 'password' });
-    if (error || !user) return null;
-    return getProfile(user.id);
-  }
-  return MOCK_PROFILES.find(p => p.email === email) || null;
+  // Password ကို Login Page မှာ စစ်ပြီးဖြစ်လို့ ဒီမှာ Profile ဆွဲယူရုံပါပဲ
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error || !data) return null;
+  return mapProfile(data);
 };
 
 export const getProfile = async (userId: string): Promise<Profile | null> => {
-  if (supabase) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    return data;
-  }
-  return MOCK_PROFILES.find(p => p.id === userId) || null;
-};
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
 
-export const getAllStudents = async (): Promise<Profile[]> => {
-  if (supabase) {
-    const { data } = await supabase.from('profiles').select('*').eq('role', 'student');
-    return data || [];
-  }
-  return MOCK_PROFILES.filter(p => p.role === 'student');
+  if (error || !data) return null;
+  return mapProfile(data);
 };
 
 export const saveStudentReferences = async (userId: string, interiorFile: File, exteriorFile: File): Promise<Profile | null> => {
+    // ၁။ ပုံများကို Base64 ပြောင်းခြင်း (Storage Bucket မလိုအောင် ယာယီဖြေရှင်းနည်း)
     const interiorUrl = await fileToBase64(interiorFile);
     const exteriorUrl = await fileToBase64(exteriorFile);
     
-    // In a real app, upload to storage bucket here
-    const profile = MOCK_PROFILES.find(p => p.id === userId);
-    if (profile) {
-        profile.references = { interior: interiorUrl, exterior: exteriorUrl };
-        return { ...profile };
-    }
-    return null;
+    // ၂။ Database ထဲသို့ တန်းသိမ်းခြင်း
+    const { data, error } = await supabase
+        .from('profiles')
+        .update({ 
+            ref_interior_url: interiorUrl, 
+            ref_exterior_url: exteriorUrl 
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+    
+    if (error || !data) return null;
+    return mapProfile(data);
 };
 
 export const getStudentSubmissions = async (studentId: string): Promise<Submission[]> => {
-  if (supabase) {
-    const { data } = await supabase.from('submissions').select('*').eq('student_id', studentId);
-    return data || [];
-  }
-  return MOCK_SUBMISSIONS.filter(s => s.student_id === studentId);
+  const { data } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('student_id', studentId);
+  return data || [];
 };
 
-export const getAllSubmissions = async (): Promise<Submission[]> => {
-  if (supabase) {
-    const { data } = await supabase.from('submissions').select('*');
-    return data || [];
-  }
-  return MOCK_SUBMISSIONS;
-};
-
+// Assignment အသစ်တင်ခြင်း
 export const submitAssignment = async (
   studentId: string, 
   assignmentNumber: number, 
@@ -74,10 +82,10 @@ export const submitAssignment = async (
   renderFile: File | null,
   message?: string
 ): Promise<boolean> => {
+  // Render ပုံမရှိရင် ယာယီပုံ ထည့်ပေးမယ်
   const renderUrl = renderFile ? await fileToBase64(renderFile) : 'https://picsum.photos/800/600';
 
-  const newSub: Submission = {
-    id: Math.random().toString(36).substr(2, 9),
+  const { error } = await supabase.from('submissions').insert({
     student_id: studentId,
     assignment_number: assignmentNumber,
     reference_image_url: refUrl,
@@ -85,34 +93,7 @@ export const submitAssignment = async (
     status: 'pending',
     student_message: message,
     created_at: new Date().toISOString()
-  };
-  
-  MOCK_SUBMISSIONS.push(newSub);
-  return true;
-};
+  });
 
-export const gradeSubmission = async (
-  submissionId: string, 
-  status: 'approved' | 'rejected', 
-  comment: string
-): Promise<boolean> => {
-  if (supabase) {
-      const { error } = await supabase
-          .from('submissions')
-          .update({ status, teacher_comment: comment })
-          .eq('id', submissionId);
-      return !error;
-  }
-  
-  const sub = MOCK_SUBMISSIONS.find(s => s.id === submissionId);
-  if (sub) {
-      sub.status = status;
-      sub.teacher_comment = comment;
-      return true;
-  }
-  return false;
-};
-
-export const getAcademyGallery = async (): Promise<Submission[]> => {
-    return MOCK_SUBMISSIONS.filter(s => s.status === 'approved');
+  return !error;
 };
