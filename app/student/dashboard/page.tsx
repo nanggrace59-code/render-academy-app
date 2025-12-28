@@ -40,9 +40,9 @@ export default function StudentDashboardWrapper() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
-            {/* --- GLOBAL HEADER --- */}
+            {/* --- GLOBAL HEADER (Clean - No Red Box) --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: Class Info Only (No Red Box here as requested) */}
+                 {/* LEFT: Class Info Only */}
                  <div>
                     <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
                     <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
@@ -58,7 +58,7 @@ export default function StudentDashboardWrapper() {
 
 // --- MAIN WORKSPACE LOGIC ---
 function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profile) => void }) {
-    // 1. All Hooks Must Be Defined At The Top Level
+    // 1. Hooks (Must be at the top)
     const router = useRouter();
     
     // Data State
@@ -83,43 +83,41 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     const [isInitSaving, setIsInitSaving] = useState(false);
 
     // Load Data Effect
-    useEffect(() => { loadData(); }, [user.id, user.current_level, viewMode]);
+    useEffect(() => { 
+        const loadData = async () => {
+            if (viewMode === 'workspace') {
+                const all = await getStudentSubmissions(user.id);
+                const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
+                                            .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+                setHistory(currentLevelSubs);
+                
+                const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
+                if (latest && latest.status !== 'rejected') {
+                    setSelectedHistoryId(latest.id);
+                } else {
+                    setSelectedHistoryId(null); 
+                }
+            } else {
+                const gal = await getAcademyGallery();
+                setGallerySubmissions(gal);
+            }
+        };
+        loadData(); 
+    }, [user.id, user.current_level, viewMode]);
 
     // --- HELPER FUNCTIONS ---
 
-    const loadData = async () => {
-        if (viewMode === 'workspace') {
-            const all = await getStudentSubmissions(user.id);
-            const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
-                                        .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-            setHistory(currentLevelSubs);
-            
-            const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
-            if (latest && latest.status !== 'rejected') {
-                setSelectedHistoryId(latest.id);
-            } else {
-                setSelectedHistoryId(null); 
-            }
-        } else {
-            const gal = await getAcademyGallery();
-            setGallerySubmissions(gal);
-        }
-    };
-
     const handleResetReferences = async () => {
-        if (confirm("Are you sure you want to reset your master references?")) {
+        if (confirm("Are you sure you want to reset your master references? This will reload the page.")) {
             setIsResetting(true);
             try {
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                
-                // Instant UI Update
-                const updatedUser = { ...user, references: undefined };
-                setUser(updatedUser); 
+                // Force Reload to ensure clean state and avoid freeze
+                window.location.reload();
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
-            } finally {
                 setIsResetting(false);
             }
         }
@@ -146,15 +144,11 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         
         try {
             await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
-            // Fetch updated profile to trigger instant view switch
-            const updatedProfile = await login(user.email);
-            if (updatedProfile) {
-                setUser(updatedProfile); 
-            }
+            // Instant Reload to enter Workspace
+            window.location.reload();
         } catch (error) {
             console.error(error);
             alert("Upload failed. Please try again.");
-        } finally {
             setIsInitSaving(false);
         }
     };
@@ -163,8 +157,24 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         if (!renderFile) return;
         setIsSubmitting(true);
         const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
+        
+        // Helper to refresh data
+        const refreshData = async () => {
+             const all = await getStudentSubmissions(user.id);
+             const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
+                                         .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+             setHistory(currentLevelSubs);
+             
+             const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
+             if (latest && latest.status !== 'rejected') {
+                 setSelectedHistoryId(latest.id);
+             } else {
+                 setSelectedHistoryId(null); 
+             }
+        };
+
         await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
-        await loadData();
+        await refreshData();
         setRenderFile(null);
         setRenderPreview('');
         setStudentNote('');
@@ -173,7 +183,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
 
     // --- VIEW LOGIC START ---
 
-    // 1. Check if we need to show Initialization Screen
+    // 1. INITIALIZATION CHECK
     if (!user.references?.interior || !user.references?.exterior) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
@@ -195,7 +205,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                     {preview ? (
                                         <>
                                             <img src={preview} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"/>
-                                            <button onClick={() => removeRef(type as any)} className="absolute top-3 right-3 z-30 w-8 h-8 bg-black/50 backdrop-blur hover:bg-[#d90238] rounded-full flex items-center justify-center text-white transition-colors"><X size={14}/></button>
+                                            <button onClick={() => removeRef(type as 'interior' | 'exterior')} className="absolute top-3 right-3 z-30 w-8 h-8 bg-black/50 backdrop-blur hover:bg-[#d90238] rounded-full flex items-center justify-center text-white transition-colors"><X size={14}/></button>
                                         </>
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:scale-105 transition-transform duration-500">
@@ -216,7 +226,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         );
     }
 
-    // 2. Main Dashboard Logic
+    // 2. MAIN DASHBOARD LOGIC
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
     const isLatestApproved = latestSubmission?.status === 'approved';
@@ -254,7 +264,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                     <button onClick={() => setViewMode('gallery')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="Student Gallery"><LayoutGrid size={20}/></button>
                  </div>
                  
-                 {/* "GO BACK" BUTTON */}
+                 {/* "GO BACK" / RESET BUTTON */}
                  <div className="flex flex-col gap-4">
                     <button 
                         onClick={handleResetReferences} 
