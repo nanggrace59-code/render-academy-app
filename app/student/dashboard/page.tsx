@@ -40,7 +40,7 @@ export default function StudentDashboardWrapper() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
-            {/* --- GLOBAL HEADER (Clean - No Red Box) --- */}
+            {/* --- GLOBAL HEADER (CLEAN - NO RED BOX) --- */}
             <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
                  {/* LEFT: Class Info Only */}
                  <div>
@@ -58,7 +58,6 @@ export default function StudentDashboardWrapper() {
 
 // --- MAIN WORKSPACE LOGIC ---
 function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profile) => void }) {
-    // 1. Hooks (Must be at the top)
     const router = useRouter();
     
     // Data State
@@ -82,7 +81,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     const [refPreviews, setRefPreviews] = useState<{interior: string, exterior: string}>({ interior: '', exterior: '' });
     const [isInitSaving, setIsInitSaving] = useState(false);
 
-    // Load Data Effect
+    // Load Data
     useEffect(() => { 
         const loadData = async () => {
             if (viewMode === 'workspace') {
@@ -105,7 +104,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         loadData(); 
     }, [user.id, user.current_level, viewMode]);
 
-    // --- HELPER FUNCTIONS ---
+    // --- ACTIONS ---
 
     const handleResetReferences = async () => {
         if (confirm("Are you sure you want to reset your master references? This will reload the page.")) {
@@ -113,11 +112,13 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             try {
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                // Force Reload to ensure clean state and avoid freeze
-                window.location.reload();
+                // Instant UI Update to prevent freeze
+                const updatedUser = { ...user, references: undefined };
+                setUser(updatedUser); 
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
+            } finally {
                 setIsResetting(false);
             }
         }
@@ -144,11 +145,22 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         
         try {
             await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
-            // Instant Reload to enter Workspace
-            window.location.reload();
+            
+            // CRITICAL FIX: Manually update local state to force screen switch immediately
+            // This prevents the "stuck" state while waiting for a reload
+            const updatedUser = { 
+                ...user, 
+                references: { 
+                    interior: refPreviews.interior, // Use local preview as temp data
+                    exterior: refPreviews.exterior  // Use local preview as temp data
+                } 
+            };
+            setUser(updatedUser);
+
         } catch (error) {
             console.error(error);
             alert("Upload failed. Please try again.");
+        } finally {
             setIsInitSaving(false);
         }
     };
@@ -158,32 +170,21 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         setIsSubmitting(true);
         const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
         
-        // Helper to refresh data
-        const refreshData = async () => {
-             const all = await getStudentSubmissions(user.id);
-             const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
-                                         .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-             setHistory(currentLevelSubs);
-             
-             const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
-             if (latest && latest.status !== 'rejected') {
-                 setSelectedHistoryId(latest.id);
-             } else {
-                 setSelectedHistoryId(null); 
-             }
-        };
-
         await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
-        await refreshData();
+        
+        // Refresh History
+        const all = await getStudentSubmissions(user.id);
+        const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
+                                    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        setHistory(currentLevelSubs);
+        
         setRenderFile(null);
         setRenderPreview('');
         setStudentNote('');
         setIsSubmitting(false);
     };
 
-    // --- VIEW LOGIC START ---
-
-    // 1. INITIALIZATION CHECK
+    // --- VIEW LOGIC: INITIALIZATION SCREEN ---
     if (!user.references?.interior || !user.references?.exterior) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
@@ -226,7 +227,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         );
     }
 
-    // 2. MAIN DASHBOARD LOGIC
+    // --- VIEW LOGIC: MAIN DASHBOARD ---
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
     const isLatestApproved = latestSubmission?.status === 'approved';
@@ -253,7 +254,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             {/* LEFT SIDEBAR (RTA Box Here) */}
             <div className="w-16 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center justify-between py-6 shrink-0 z-50">
                  <div className="flex flex-col gap-6 items-center">
-                    {/* FIXED: 'RTA' in red box */}
+                    {/* RTA LOGO IN RED BOX */}
                     <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
                         RTA
                     </div>
