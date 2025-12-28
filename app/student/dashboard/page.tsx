@@ -34,23 +34,8 @@ export default function StudentDashboardWrapper() {
     if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-[#d90238]" size={32} /></div>;
     if (!user) return null;
 
-    const isMasterClass = user.enrolled_class === 'master_class';
-    const mainTitle = isMasterClass ? 'MASTER CLASS' : 'VISUALIZATION CLASS';
-    const subTitle = isMasterClass ? 'ARCHITECTURE MODELING' : 'VISUALIZATION FOUNDATIONS';
-
     return (
         <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white overflow-hidden flex flex-col">
-            {/* --- GLOBAL HEADER (CLEAN - NO RED BOX) --- */}
-            <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
-                 {/* LEFT: Class Info Only */}
-                 <div>
-                    <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
-                    <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
-                 </div>
-                 {/* RIGHT: Empty */}
-            </header>
-            
-            {/* Main Content Injector */}
             <StudentWorkspace user={user} setUser={setUser} />
         </div>
     );
@@ -81,7 +66,10 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     const [refPreviews, setRefPreviews] = useState<{interior: string, exterior: string}>({ interior: '', exterior: '' });
     const [isInitSaving, setIsInitSaving] = useState(false);
 
-    // Load Data
+    const isMasterClass = user.enrolled_class === 'master_class';
+    const mainTitle = isMasterClass ? 'MASTER CLASS' : 'VISUALIZATION CLASS';
+    const subTitle = isMasterClass ? 'ARCHITECTURE MODELING' : 'VISUALIZATION FOUNDATIONS';
+
     useEffect(() => { 
         const loadData = async () => {
             if (viewMode === 'workspace') {
@@ -112,7 +100,6 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             try {
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                // Instant UI Update to prevent freeze
                 const updatedUser = { ...user, references: undefined };
                 setUser(updatedUser); 
             } catch (error) {
@@ -145,18 +132,14 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         
         try {
             await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
-            
-            // CRITICAL FIX: Manually update local state to force screen switch immediately
-            // This prevents the "stuck" state while waiting for a reload
             const updatedUser = { 
                 ...user, 
                 references: { 
-                    interior: refPreviews.interior, // Use local preview as temp data
-                    exterior: refPreviews.exterior  // Use local preview as temp data
+                    interior: refPreviews.interior, 
+                    exterior: refPreviews.exterior 
                 } 
             };
             setUser(updatedUser);
-
         } catch (error) {
             console.error(error);
             alert("Upload failed. Please try again.");
@@ -172,7 +155,6 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         
         await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
         
-        // Refresh History
         const all = await getStudentSubmissions(user.id);
         const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
                                     .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
@@ -184,7 +166,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         setIsSubmitting(false);
     };
 
-    // --- VIEW LOGIC: INITIALIZATION SCREEN ---
+    // --- 1. INITIALIZATION CHECK ---
     if (!user.references?.interior || !user.references?.exterior) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 bg-[#050505] pb-32">
@@ -227,7 +209,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         );
     }
 
-    // --- VIEW LOGIC: MAIN DASHBOARD ---
+    // --- 2. MAIN DASHBOARD LOGIC ---
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
     const isLatestApproved = latestSubmission?.status === 'approved';
@@ -249,55 +231,74 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     }
 
     return (
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
             
-            {/* LEFT SIDEBAR (RTA Box Here) */}
-            <div className="w-16 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center justify-between py-6 shrink-0 z-50">
-                 <div className="flex flex-col gap-6 items-center">
-                    {/* RTA LOGO IN RED BOX */}
+            {/* --- HEADER (Replaces Sidebar) --- */}
+            <header className="h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-50">
+                 {/* LEFT: RTA Logo & Class Info */}
+                 <div className="flex items-center gap-6">
                     <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
                         RTA
                     </div>
-
-                    <div className="w-8 h-px bg-white/10"></div>
-
-                    <button onClick={() => setViewMode('workspace')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${viewMode === 'workspace' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="My Workspace"><MonitorPlay size={20}/></button>
-                    <button onClick={() => setViewMode('gallery')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="Student Gallery"><LayoutGrid size={20}/></button>
+                    <div>
+                        <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
+                        <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                    </div>
                  </div>
-                 
-                 {/* "GO BACK" / RESET BUTTON */}
-                 <div className="flex flex-col gap-4">
+
+                 {/* CENTER: Navigation (Moved from Sidebar) */}
+                 <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg">
+                    <button 
+                        onClick={() => setViewMode('workspace')} 
+                        className={`px-4 py-2 rounded-md flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'workspace' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}
+                    >
+                        <MonitorPlay size={14}/> Workspace
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('gallery')} 
+                        className={`px-4 py-2 rounded-md flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'gallery' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}
+                    >
+                        <LayoutGrid size={14}/> Gallery
+                    </button>
+                 </div>
+
+                 {/* RIGHT: Actions */}
+                 <div className="flex items-center gap-4">
                     <button 
                         onClick={handleResetReferences} 
                         disabled={isResetting}
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-[#d90238] transition-all disabled:opacity-50" 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-[#d90238] transition-all disabled:opacity-50 border border-white/5" 
                         title="Reset References"
                     >
-                        {isResetting ? <Loader2 className="animate-spin" size={20}/> : <Settings size={20}/>}
+                        {isResetting ? <Loader2 className="animate-spin" size={16}/> : <Settings size={16}/>}
                     </button>
                     <button onClick={() => { localStorage.removeItem('activeUserEmail'); window.location.href = '/login'; }} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500" title="Logout">
                         <LogOut size={16}/>
                     </button>
                  </div>
-            </div>
+            </header>
 
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex relative min-w-0">
                 {viewMode === 'workspace' ? (
                     <>
-                        {/* VISUAL AREA */}
-                        <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center">
-                            <div className="flex-1 relative w-full h-full bg-[#020202]">
+                        {/* VISUAL AREA (Clean, 16:9 Fixed Ratio) */}
+                        <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-8">
+                            
+                            {/* 16:9 CONTAINER - Images fit INSIDE this box */}
+                            <div className="w-full max-w-[1600px] aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                                 {currentRefImage && currentRenderImage ? (
                                     <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                 ) : currentRefImage ? (
                                     <div className="w-full h-full relative group flex items-center justify-center">
-                                         <img src={currentRefImage} className="max-w-full max-h-full object-contain opacity-30 grayscale transition-all duration-700"/>
+                                         {/* OBJECT CONTAIN: Ensures 9:16 images fit inside 16:9 frame */}
+                                         <img src={currentRefImage} className="w-full h-full object-contain opacity-50 grayscale transition-all duration-700"/>
                                     </div>
                                 ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center opacity-20"><p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Select Context</p></div>
                                 )}
 
+                                {/* Status Badge */}
                                 <div className="absolute bottom-8 left-8 z-20 pointer-events-none">
                                     <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-2 ${viewStatus === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : viewStatus === 'REJECTED' ? 'bg-[#d90238]/10 border-[#d90238]/30 text-[#d90238]' : viewStatus === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-white/5 border-white/10 text-neutral-400'}`}>
                                         {viewStatus === 'PENDING' && <Clock size={14}/>}
