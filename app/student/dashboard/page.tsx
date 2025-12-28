@@ -51,14 +51,13 @@ export default function StudentDashboardWrapper() {
             </header>
             
             {/* Main Content Injector */}
-            <StudentWorkspace user={user} />
+            <StudentWorkspace user={user} setUser={setUser} />
         </div>
     );
 }
 
 // --- MAIN WORKSPACE LOGIC ---
-function StudentWorkspace({ user }: { user: Profile }) {
-    const router = useRouter();
+function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profile) => void }) {
     // Data State
     const [history, setHistory] = useState<Submission[]>([]);
     const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
@@ -101,14 +100,16 @@ function StudentWorkspace({ user }: { user: Profile }) {
         }
     };
 
-    // --- NEW FEATURE: RESET REFERENCES ("Go Back") ---
+    // --- RESET REFERENCES ("Go Back") ---
     const handleResetReferences = async () => {
-        if (confirm("Are you sure you want to reset your master references? This action cannot be undone and you will need to upload them again.")) {
+        if (confirm("Are you sure you want to reset your master references?")) {
             setIsResetting(true);
             try {
                 const { error } = await supabase.rpc('reset_student_references', { user_id: user.id });
                 if (error) throw error;
-                window.location.reload(); // Reload to trigger init screen
+                // Force fetch updated profile
+                const updatedProfile = await login(user.email);
+                if (updatedProfile) setUser(updatedProfile);
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
@@ -141,11 +142,24 @@ function StudentWorkspace({ user }: { user: Profile }) {
             
             setIsInitSaving(true);
             
-            // Save to DB
-            await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
-            
-            // FORCE RELOAD TO ENTER WORKSPACE
-            window.location.reload();
+            try {
+                // 1. Save to DB
+                await saveStudentReferences(user.id, refFiles.interior, refFiles.exterior);
+                
+                // 2. Fetch the UPDATED profile immediately
+                const updatedProfile = await login(user.email);
+                
+                // 3. Update State (This switches the screen instantly without reload)
+                if (updatedProfile) {
+                    setUser(updatedProfile);
+                } else {
+                    window.location.reload(); // Fallback
+                }
+            } catch (error) {
+                console.error(error);
+                setIsInitSaving(false);
+                alert("Something went wrong uploading images.");
+            }
         }
 
         return (
@@ -180,14 +194,16 @@ function StudentWorkspace({ user }: { user: Profile }) {
                         })}
                      </div>
                      <div className="flex justify-center pt-4">
-                        <button onClick={saveRefs} disabled={isInitSaving || (!refPreviews.interior || !refPreviews.exterior)} className="bg-[#d90238] hover:bg-[#b0022d] text-white px-12 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all w-full max-w-md disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(217,2,56,0.2)] hover:shadow-[0_0_30px_rgba(217,2,56,0.4)]">{isInitSaving ? 'Initializing Protocol...' : 'Initialize Project'}</button>
+                        <button onClick={saveRefs} disabled={isInitSaving || (!refPreviews.interior || !refPreviews.exterior)} className="bg-[#d90238] hover:bg-[#b0022d] text-white px-12 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all w-full max-w-md disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(217,2,56,0.2)] hover:shadow-[0_0_30px_rgba(217,2,56,0.4)]">
+                            {isInitSaving ? 'INITIALIZING PROTOCOL...' : 'INITIALIZE PROJECT'}
+                        </button>
                      </div>
                 </div>
             </div>
         )
     }
 
-    // --- 2. MAIN DASHBOARD LOGIC (Sidebar visible) ---
+    // --- 2. MAIN DASHBOARD LOGIC ---
     
     const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
@@ -241,7 +257,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                     >
                         {isResetting ? <Loader2 className="animate-spin" size={20}/> : <Settings size={20}/>}
                     </button>
-                    <button onClick={() => { localStorage.removeItem('activeUserEmail'); router.push('/login'); }} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500" title="Logout">
+                    <button onClick={() => { localStorage.removeItem('activeUserEmail'); window.location.href = '/login'; }} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all text-neutral-500" title="Logout">
                         <LogOut size={16}/>
                     </button>
                  </div>
@@ -252,14 +268,13 @@ function StudentWorkspace({ user }: { user: Profile }) {
                 {viewMode === 'workspace' ? (
                     // --- VIEW A: WORKSPACE ---
                     <>
-                        {/* VISUAL AREA (CLEANED UP - No Top Bars, No Big Placeholders) */}
+                        {/* VISUAL AREA */}
                         <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center">
                             {/* Only show Slider or clean empty state */}
                             <div className="flex-1 relative w-full h-full bg-[#020202]">
                                 {currentRefImage && currentRenderImage ? (
                                     <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                 ) : currentRefImage ? (
-                                    // CLEAN EMPTY STATE: Just show the reference image subtly
                                     <div className="w-full h-full relative group flex items-center justify-center">
                                          <img src={currentRefImage} className="max-w-full max-h-full object-contain opacity-30 grayscale transition-all duration-700"/>
                                     </div>
@@ -267,7 +282,7 @@ function StudentWorkspace({ user }: { user: Profile }) {
                                     <div className="w-full h-full flex flex-col items-center justify-center opacity-20"><p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Select Context</p></div>
                                 )}
 
-                                {/* Status Badge (Kept as it's useful) */}
+                                {/* Status Badge */}
                                 <div className="absolute bottom-8 left-8 z-20 pointer-events-none">
                                     <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-2 ${viewStatus === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : viewStatus === 'REJECTED' ? 'bg-[#d90238]/10 border-[#d90238]/30 text-[#d90238]' : viewStatus === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-white/5 border-white/10 text-neutral-400'}`}>
                                         {viewStatus === 'PENDING' && <Clock size={14}/>}
@@ -279,10 +294,10 @@ function StudentWorkspace({ user }: { user: Profile }) {
                             </div>
                         </div>
 
-                        {/* RIGHT SIDEBAR (Context Switcher moved here) */}
+                        {/* RIGHT SIDEBAR */}
                         <div className="w-[400px] bg-[#0a0a0a] border-l border-white/5 flex flex-col shrink-0 z-40 shadow-2xl">
                             
-                            {/* CONTEXT SWITCHER (MOVED HERE FOR CLEANER UX) */}
+                            {/* CONTEXT SWITCHER */}
                             <div className="p-6 border-b border-white/5 bg-[#0a0a0a]">
                                 <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4">Submission Context</h3>
                                 <div className="flex bg-[#111] rounded-lg p-1 border border-white/5">
