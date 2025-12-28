@@ -1,23 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  getProfile, 
-  saveStudentReferences, 
-  getStudentSubmissions, 
-  submitAssignment 
-} from '@/services/api'; 
+import { useRouter } from 'next/navigation';
+// API Functions
+import { login, saveStudentReferences, getStudentSubmissions, submitAssignment } from '@/services/api'; 
+// Components
 import { ImageSlider } from '@/components/ImageSlider';
 import { Profile, Submission } from '@/types';
+// Icons
 import { 
   Upload, Home, Building, CheckCircle, Loader2, 
-  Clock, AlertCircle, FileImage, Layout 
+  Clock, AlertCircle, Layout, LogOut 
 } from 'lucide-react';
 
 export default function StudentDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeTab, setActiveTab] = useState<'interior' | 'exterior'>('interior');
   const [view, setView] = useState<'init' | 'dashboard'>('init');
   
   // States for Uploading
@@ -27,100 +26,92 @@ export default function StudentDashboard() {
   // Data States
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  // 1. Initial Data Loading
+  // ၁။ စစချင်း Login ဝင်ထားသူကို စစ်ဆေးခြင်း
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    // Demo User Email (Login page က user ကို သုံးသင့်ပါတယ်)
-    const profile = await getProfile('yinang723@gmail.com'); // Or get from Auth Context
+    // LocalStorage မှ ဝင်ထားသူ Email ကို ဖတ်ခြင်း
+    const activeEmail = typeof window !== 'undefined' ? localStorage.getItem('activeUserEmail') : null;
+
+    if (!activeEmail) {
+        // Login မဝင်ရသေးရင် Login page ကို ပြန်မောင်းထုတ်မယ်
+        router.push('/login'); 
+        return;
+    }
+
+    // Email ဖြင့် Database တွင် User ရှာခြင်း
+    const profile = await login(activeEmail); 
     
-    // User မရှိရင် Login ကို ပြန်မောင်းထုတ်သင့်ပါတယ် (ဒီမှာတော့ demo မို့ ထားလိုက်ပါမယ်)
     if (profile) {
       setUser(profile);
-      // Reference ၂ ပုံလုံးရှိမှ Dashboard ကို ပေးဝင်ပါမယ် (AI Studio Logic)
+      // Reference ၂ ပုံလုံးရှိမှ Dashboard ကို ပေးဝင်ပါမယ်
       if (profile.references?.interior && profile.references?.exterior) {
         setView('dashboard');
-        // Load Submissions
         const subs = await getStudentSubmissions(profile.id);
         setSubmissions(subs);
       } else {
         setView('init');
       }
+    } else {
+      // User မရှိရင် (သို့) Error တက်ရင် Login ပြန်သွား
+      console.error("User profile not found.");
+      router.push('/login');
     }
     setLoading(false);
   };
 
-  // 2. Reference Upload Logic (Init View)
-  const handleRefUpload = async (file: File, type: 'interior' | 'exterior') => {
-    if (!user) return;
-    setUploading(true);
-
-    // Backend API ကို လှမ်းခေါ်ခြင်း
-    // (မှတ်ချက်: ဒီနေရာမှာ file object အစစ်လိုပါတယ်, input event ကနေ ယူရပါမယ်)
-    // Demo အတွက်ကြောင့် interiorFile/exteriorFile နေရာမှာ file ကိုပဲ ထည့်ထားပါတယ်
-    // တကယ့် app မှာ type အလိုက် update လုပ်ပေးရပါမယ်
-    
-    // ယာယီအားဖြင့် UI update ဖြစ်အောင် လုပ်ပြထားခြင်း
-    setTimeout(async () => {
-       // Note: In real implementation, saveStudentReferences needs both files or update individually.
-       // For this demo, assume API handles partial updates or we re-fetch.
-       
-       // Re-fetch profile to check status
-       const updatedProfile = await getProfile(user.id);
-       if (updatedProfile) {
-          setUser(updatedProfile);
-          if (updatedProfile.references?.interior && updatedProfile.references?.exterior) {
-            setView('dashboard');
-          }
-       }
-       setUploading(false);
-    }, 1500);
+  // Logout Function
+  const handleLogout = () => {
+      localStorage.removeItem('activeUserEmail');
+      router.push('/login');
   };
 
-  // Helper to trigger hidden file input
-  const triggerUpload = (id: string) => {
-    document.getElementById(id)?.click();
-  };
-
+  // Upload Logic (Reference)
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'interior' | 'exterior') => {
-    if (e.target.files && e.target.files[0]) {
-      // In a real scenario, we might need both files to call saveStudentReferences once, 
-      // or modify API to accept single file updates.
-      // For now, let's simulate the upload visually using the API we have.
+    if (e.target.files && e.target.files[0] && user) {
+      setUploading(true);
       const file = e.target.files[0];
       
-      // Since our API expects both files, we'll mock the behavior here for the "One by One" UI
-      // In production: Update API to allow patching single reference.
+      const intFile = type === 'interior' ? file : null;
+      const extFile = type === 'exterior' ? file : null;
+
+      const updatedProfile = await saveStudentReferences(user.id, intFile, extFile);
       
-      // CALLING API (Modified for Demo context):
-      await saveStudentReferences(user!.id, file, file); // This just saves the same file to both for demo to pass logic
-      
-      // Refresh
-      loadData();
+      if (updatedProfile) {
+          setUser(updatedProfile);
+          if (updatedProfile.references?.interior && updatedProfile.references?.exterior) {
+             // Dashboard မပြောင်းခင် Data အသစ်ဆွဲပါ
+             setView('dashboard');
+             // Refresh Submissions
+             const subs = await getStudentSubmissions(updatedProfile.id);
+             setSubmissions(subs);
+          }
+      }
+      setUploading(false);
     }
   };
 
-  // 3. Assignment Submission Logic
+  // Submit Assignment Logic
   const handleAssignmentSubmit = async () => {
     if (!user || !renderFile) return;
     setUploading(true);
     
-    // Assignment 1 (Interior) Demo
     const refUrl = user.references?.interior || '';
     
-    await submitAssignment(user.id, 1, refUrl, renderFile, "First draft submission");
+    // Assignment 1 အတွက် တင်ခြင်း
+    await submitAssignment(user.id, 1, refUrl, renderFile, "Draft submission");
     
-    // Refresh Data
     const subs = await getStudentSubmissions(user.id);
     setSubmissions(subs);
     setRenderFile(null);
     setUploading(false);
   };
 
-
-  // --- VIEWS ---
+  const triggerUpload = (id: string) => {
+    document.getElementById(id)?.click();
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -128,16 +119,20 @@ export default function StudentDashboard() {
     </div>
   );
 
-  // VIEW A: Project Initialization (Upload References)
+  // VIEW A: Project Initialization (Reference Upload)
   if (view === 'init') {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 relative">
+        <button onClick={handleLogout} className="absolute top-6 right-6 flex items-center gap-2 text-neutral-500 hover:text-white text-xs uppercase font-bold tracking-widest">
+            <LogOut size={14}/> Logout
+        </button>
+
         <div className="max-w-5xl w-full space-y-12">
            <div className="text-center space-y-4">
               <span className="text-red-600 font-bold tracking-widest text-xs uppercase border border-red-900/30 bg-red-900/10 px-3 py-1 rounded-full">Onboarding Protocol</span>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Project Initialization</h1>
               <p className="text-neutral-400 max-w-lg mx-auto">
-                Upload your master reference images. These will serve as the ground truth for all future AI correction assignments.
+                Welcome, {user?.full_name || 'Student'}. Upload your master reference images to begin.
               </p>
            </div>
 
@@ -150,7 +145,7 @@ export default function StudentDashboard() {
                     ? 'border-red-600/50 bg-red-900/5' 
                     : 'border-neutral-800 hover:border-red-600 hover:bg-neutral-900'}`}
               >
-                  <input id="int-upload" type="file" className="hidden" accept="image/*" onChange={(e) => onFileChange(e, 'interior')} />
+                  <input id="int-upload" type="file" className="hidden" accept="image/*" onChange={(e) => onFileChange(e, 'interior')} disabled={!!user?.references?.interior} />
                   
                   {user?.references?.interior ? (
                     <>
@@ -166,8 +161,8 @@ export default function StudentDashboard() {
                         <Home size={24} className="text-white" />
                       </div>
                       <h3 className="font-bold text-lg mb-1">Interior Reference</h3>
-                      <p className="text-xs text-neutral-500 uppercase tracking-wider">Living Room / Bedroom</p>
-                      <span className="mt-6 text-xs text-neutral-600 group-hover:text-white transition-colors flex items-center gap-2">
+                      <p className="text-xs text-neutral-500 uppercase tracking-wider mb-6">Living Room / Bedroom</p>
+                      <span className="text-xs text-neutral-600 group-hover:text-white transition-colors flex items-center gap-2">
                         {uploading ? <Loader2 className="animate-spin" /> : <Upload size={14} />} Click to Upload
                       </span>
                     </>
@@ -182,7 +177,7 @@ export default function StudentDashboard() {
                     ? 'border-red-600/50 bg-red-900/5' 
                     : 'border-neutral-800 hover:border-red-600 hover:bg-neutral-900'}`}
               >
-                  <input id="ext-upload" type="file" className="hidden" accept="image/*" onChange={(e) => onFileChange(e, 'exterior')} />
+                  <input id="ext-upload" type="file" className="hidden" accept="image/*" onChange={(e) => onFileChange(e, 'exterior')} disabled={!!user?.references?.exterior} />
                   
                   {user?.references?.exterior ? (
                     <>
@@ -198,8 +193,8 @@ export default function StudentDashboard() {
                         <Building size={24} className="text-white" />
                       </div>
                       <h3 className="font-bold text-lg mb-1">Exterior Reference</h3>
-                      <p className="text-xs text-neutral-500 uppercase tracking-wider">Facade / Landscape</p>
-                      <span className="mt-6 text-xs text-neutral-600 group-hover:text-white transition-colors flex items-center gap-2">
+                      <p className="text-xs text-neutral-500 uppercase tracking-wider mb-6">Facade / Landscape</p>
+                      <span className="text-xs text-neutral-600 group-hover:text-white transition-colors flex items-center gap-2">
                          {uploading ? <Loader2 className="animate-spin" /> : <Upload size={14} />} Click to Upload
                       </span>
                     </>
@@ -213,11 +208,10 @@ export default function StudentDashboard() {
 
   // VIEW B: Main Dashboard
   const activeSubmission = submissions.find(s => s.assignment_number === 1);
-  const masterReference = user?.references?.interior || ''; // Assuming Assignment 1 is Interior
+  const masterReference = user?.references?.interior || '';
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-red-900 selection:text-white">
-      {/* Header */}
+    <div className="min-h-screen bg-[#050505] text-white font-sans">
       <header className="border-b border-white/5 bg-[#0a0a0a]/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -225,20 +219,23 @@ export default function StudentDashboard() {
             <span className="font-bold tracking-tight hidden sm:block">RENDER <span className="text-neutral-500">ACADEMY</span></span>
           </div>
           <div className="flex items-center gap-4 text-sm">
-             <div className="px-3 py-1 rounded-full bg-neutral-900 border border-white/10 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-neutral-400">Level {user?.current_level || 1} Student</span>
+             <div className="flex items-center gap-2">
+                <div className="text-right hidden sm:block">
+                    <p className="text-xs font-bold text-white">{user?.full_name}</p>
+                    <p className="text-[10px] text-neutral-500 uppercase">Level {user?.current_level || 1} Student</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 overflow-hidden">
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt="Avatar" />
+                </div>
              </div>
-             <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 overflow-hidden">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt="Avatar" />
-             </div>
+             <button onClick={handleLogout} className="text-neutral-500 hover:text-white transition-colors ml-4" title="Logout">
+                <LogOut size={16} />
+             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-6 space-y-8">
-        
-        {/* Assignment Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                <div className="flex items-center gap-2 mb-2">
@@ -246,10 +243,9 @@ export default function StudentDashboard() {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 border-l border-neutral-800 pl-2">Week 01</span>
                </div>
                <h1 className="text-3xl font-bold text-white">Interior Visualization</h1>
-               <p className="text-neutral-500 text-sm mt-1">Replicate the master reference lighting and composition.</p>
+               <p className="text-neutral-500 text-sm mt-1">Assignment 01: Replicate the master reference lighting.</p>
             </div>
             
-            {/* Status Badge */}
             <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
                 activeSubmission?.status === 'approved' ? 'bg-green-900/10 border-green-900/30' : 
                 activeSubmission?.status === 'rejected' ? 'bg-red-900/10 border-red-900/30' :
@@ -264,7 +260,9 @@ export default function StudentDashboard() {
                           <p className="text-xs font-bold uppercase tracking-wider text-white">
                             {activeSubmission.status === 'pending' ? 'Under Review' : activeSubmission.status}
                           </p>
-                          <p className="text-[10px] text-neutral-500">Submitted {new Date(activeSubmission.created_at!).toLocaleDateString()}</p>
+                          <p className="text-[10px] text-neutral-500">
+                             {activeSubmission.status === 'pending' ? 'Instructor is checking...' : 'Check feedback'}
+                          </p>
                        </div>
                     </>
                 ) : (
@@ -272,7 +270,7 @@ export default function StudentDashboard() {
                        <Layout className="text-neutral-500" size={18}/>
                        <div>
                           <p className="text-xs font-bold uppercase tracking-wider text-neutral-300">Pending Submission</p>
-                          <p className="text-[10px] text-neutral-500">Due in 3 days</p>
+                          <p className="text-[10px] text-neutral-500">Upload your render below</p>
                        </div>
                     </>
                 )}
@@ -281,10 +279,7 @@ export default function StudentDashboard() {
 
         {/* WORKSPACE AREA */}
         <div className="grid lg:grid-cols-3 gap-6 h-[600px]">
-            
-            {/* Main Stage (Comparison) */}
             <div className="lg:col-span-3 h-full bg-[#0a0a0a] border border-white/5 rounded-xl overflow-hidden relative group">
-                
                 {activeSubmission ? (
                    // SCENARIO 1: SUBMISSION EXISTS -> SHOW COMPARISON SLIDER
                    <ImageSlider 
