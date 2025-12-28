@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient'; 
-import { Eye, EyeOff, Loader2 } from 'lucide-react'; // Icon အသစ်များ
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState(''); 
-  const [showPassword, setShowPassword] = useState(false); // Password ပြ/မပြ State
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false); 
   const router = useRouter();
@@ -50,14 +50,16 @@ export default function LoginPage() {
         
         {/* TOP LEFT BRANDING */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-             <div className="w-8 h-8 bg-[#d90238] rounded flex items-center justify-center font-black text-black">R</div>
+             {/* RTA BOX SMALL */}
+             <div className="w-8 h-8 bg-[#d90238] rounded flex items-center justify-center font-black text-black text-[10px] tracking-tighter leading-none">RTA</div>
              <span className="font-bold tracking-tight text-white hidden sm:block">RENDER <span className="text-neutral-500">ACADEMY</span></span>
         </div>
 
         <div className="w-full max-w-[400px] p-4 z-10">
            {/* Center Logo */}
            <div className="text-center mb-10">
-             <div className="w-12 h-12 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-black text-2xl mx-auto mb-4 shadow-[0_0_30px_rgba(217,2,56,0.4)]">R</div>
+             {/* RTA BOX LARGE */}
+             <div className="w-12 h-12 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-black text-lg tracking-tighter leading-none mx-auto mb-4 shadow-[0_0_30px_rgba(217,2,56,0.4)]">RTA</div>
              <h1 className="text-3xl font-bold text-white tracking-tighter">
                ACADEMY ACCESS
              </h1>
