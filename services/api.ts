@@ -120,3 +120,13 @@ export const submitAssignment = async (
   if (error) console.error("Submit Error:", error.message);
   return !error;
 };
+// ... အပေါ်က Code တွေ အတူတူပါပဲ ...
+
+export const getAcademyGallery = async (): Promise<Submission[]> => {
+  // Status 'approved' ဖြစ်တဲ့ Submission တွေကို ဆွဲထုတ်ပါမယ်
+  const { data } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('status', 'approved');
+  return data || [];
+};
