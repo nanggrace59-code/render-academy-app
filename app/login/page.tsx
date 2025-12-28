@@ -17,24 +17,27 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Database စစ်ဆေးခြင်း
+      // ၁။ Database မှာ User ရှိ/မရှိ နှင့် Password မှန်/မမှန် စစ်ဆေးခြင်း
       const { data: user, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', email)
-        .eq('password', password) 
+        .eq('password', password) // Password တိုက်စစ်ပါမယ်
         .single();
 
       if (error || !user) {
-        setError('User not found or wrong password.');
+        setError('Invalid email or password.');
       } else {
-        // Role အလိုက် လမ်းခွဲပေးခြင်း
+        // ၂။ (အရေးကြီး) Dashboard က သိအောင် LocalStorage ထဲ မှတ်ပေးရပါမယ်
+        localStorage.setItem('activeUserEmail', email);
+
+        // ၃။ Role အလိုက် လမ်းကြောင်းခွဲပေးခြင်း
         if (user.role === 'student') {
             router.push('/student/dashboard');
         } else if (user.role === 'teacher') {
             router.push('/teacher/dashboard');
         } else {
-            router.push('/'); 
+            setError('User role not recognized.');
         }
       }
     } catch (err) {
@@ -44,74 +47,60 @@ export default function LoginPage() {
     }
   };
 
-  const fillCredentials = () => {
-    setEmail('yinang723@gmail.com');
-    setPassword('render123');
-  };
-
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col font-sans text-neutral-200">
-      <header className="px-8 py-8 border-b border-neutral-900/30">
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5">
-           <span className="text-[#E50914] font-black text-xl tracking-tighter">RTA</span>
-           <span className="font-bold text-xl tracking-tight text-white">ACADEMY</span>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-[400px]">
-           <div className="text-center mb-10">
-               <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">ACADEMY LOGIN</h1>
-               <p className="text-neutral-500 text-sm">Enter your details to access the visualization academy.</p>
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col font-sans text-neutral-200 justify-center items-center">
+        <div className="w-full max-w-[400px] p-4">
+           {/* Logo Area */}
+           <div className="text-center mb-8">
+             <h1 className="text-3xl font-bold text-white tracking-tighter">
+               <span className="text-red-600">RTA</span> ACADEMY
+             </h1>
+             <p className="text-neutral-500 text-xs uppercase tracking-widest mt-2">Visualization Learning Portal</p>
            </div>
            
-           <form onSubmit={handleLogin} className="space-y-5">
-               {/* Email Input */}
+           <form onSubmit={handleLogin} className="space-y-5 bg-[#111] p-8 rounded-xl border border-neutral-800 shadow-2xl">
                <div>
-                   <label className="block text-xs font-medium text-neutral-400 mb-2 ml-1">Email</label>
+                   <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wide">Email Address</label>
                    <input 
                     type="email" 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
-                    className="w-full bg-[#121212] border border-neutral-800 rounded-md p-3.5 text-sm text-white focus:border-[#E50914] focus:outline-none" 
+                    className="w-full bg-[#0a0a0a] border border-neutral-800 rounded-lg p-3 text-sm text-white focus:border-red-600 focus:ring-1 focus:ring-red-600 outline-none transition-all placeholder:text-neutral-700" 
                     placeholder="student@render.art"
                    />
                </div>
 
-               {/* Password Input */}
                <div>
-                   <label className="block text-xs font-medium text-neutral-400 mb-2 ml-1">Password</label>
+                   <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wide">Password</label>
                    <input 
                     type="password" 
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full bg-[#121212] border border-neutral-800 rounded-md p-3.5 text-sm text-white focus:border-[#E50914] focus:outline-none" 
-                    placeholder="Enter your password"
+                    className="w-full bg-[#0a0a0a] border border-neutral-800 rounded-lg p-3 text-sm text-white focus:border-red-600 focus:ring-1 focus:ring-red-600 outline-none transition-all placeholder:text-neutral-700" 
+                    placeholder="••••••••"
                    />
                </div>
 
-               {/* Error Message */}
-               {error && <p className="text-red-500 text-xs ml-1">{error}</p>}
+               {error && (
+                 <div className="bg-red-900/20 border border-red-900/50 p-3 rounded flex items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                   <p className="text-red-400 text-xs">{error}</p>
+                 </div>
+               )}
 
-               {/* Submit Button */}
                <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-[#E50914] hover:bg-red-700 text-white font-bold py-3.5 rounded-md text-sm shadow-lg shadow-red-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg text-sm transition-all uppercase tracking-wide shadow-lg shadow-red-900/20"
                >
-                {loading ? 'Checking...' : 'Access Academy'}
+                {loading ? 'Authenticating...' : 'Access Academy'}
                </button>
            </form>
-
-           {/* Quick Fill Button */}
-           <div className="mt-12 text-center">
-               <p className="text-[10px] uppercase text-neutral-700 mb-3 tracking-widest">Simulation Access</p>
-               <button onClick={fillCredentials} className="text-xs text-neutral-600 hover:text-white transition-colors">
-                 Fill Test Credentials
-               </button>
+           
+           <div className="text-center mt-6">
+             <p className="text-[10px] text-neutral-600">Restricted Access • Authorized Personnel Only</p>
            </div>
         </div>
-      </div>
     </div>
   );
 }
