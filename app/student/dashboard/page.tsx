@@ -7,7 +7,7 @@ import {
   login, saveStudentReferences, getStudentSubmissions, submitAssignment, getAcademyGallery 
 } from '@/services/api';
 
-// --- CHANGE 1: IMPORT THE NEW ADVANCED COMPARATOR ---
+// IMPORT THE NEW ADVANCED COMPARATOR
 import { AdvancedImageComparator } from '@/components/AdvancedImageComparator';
 import { Profile, Submission } from '@/types';
 import { 
@@ -18,9 +18,8 @@ import {
   User
 } from 'lucide-react';
 
-// --- CHANGE 2: FIXED EXPORT NAME TO MATCH APP.TSX ---
-// Using "export function" (Named Export) to fix previous import errors
-export function StudentDashboard() {
+// --- FIX: MUST BE DEFAULT EXPORT FOR NEXT.JS PAGE ---
+export default function StudentDashboard() {
     const router = useRouter(); 
     const [user, setUser] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -246,7 +245,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                 <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-6">
                                     <div className="w-full h-full aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                                         {currentRefImage && currentRenderImage ? (
-                                            /* --- CHANGE 3: REPLACED IMAGESLIDER WITH ADVANCED COMPARATOR --- */
+                                            /* --- HERE IS THE MAGIC: Using your new Google-Style Comparator --- */
                                             <AdvancedImageComparator referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                         ) : currentRefImage ? (
                                             <div className="w-full h-full relative group flex items-center justify-center"><img src={currentRefImage} className="w-full h-full object-contain opacity-50 grayscale transition-all duration-700"/></div>
