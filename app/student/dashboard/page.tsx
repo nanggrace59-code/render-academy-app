@@ -12,7 +12,8 @@ import {
   Loader2, Home, Building, History, 
   Upload, CheckCircle, AlertCircle, Clock, 
   ChevronRight, Send, RefreshCw, X,
-  LayoutGrid, MonitorPlay, Settings, LogOut
+  LayoutGrid, MonitorPlay, Settings, LogOut,
+  User // Added User Icon
 } from 'lucide-react';
 
 // --- WRAPPER ---
@@ -35,7 +36,7 @@ export default function StudentDashboardWrapper() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white flex overflow-hidden">
+        <div className="w-full h-screen bg-[#050505] text-neutral-200 font-sans selection:bg-[#d90238] selection:text-white flex overflow-hidden">
             <StudentWorkspace user={user} setUser={setUser} />
         </div>
     );
@@ -66,9 +67,11 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     const [refPreviews, setRefPreviews] = useState<{interior: string, exterior: string}>({ interior: '', exterior: '' });
     const [isInitSaving, setIsInitSaving] = useState(false);
 
+    // --- CLASS NAME LOGIC (UPDATED) ---
     const isMasterClass = user.enrolled_class === 'master_class';
     const mainTitle = isMasterClass ? 'MASTER CLASS' : 'VISUALIZATION CLASS';
-    const subTitle = isMasterClass ? 'ARCHITECTURE MODELING' : 'VISUALIZATION FOUNDATIONS';
+    // Change: Only show subtitle for Master Class. Visualization Class gets null.
+    const subTitle = isMasterClass ? 'ARCHITECTURE MODELING' : null; 
 
     // Load Data
     useEffect(() => { 
@@ -179,20 +182,22 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         }
     }
 
-    // --- INITIALIZATION CHECK ---
+    // Check if initializing
     const needsInitialization = !user.references?.interior || !user.references?.exterior;
 
     return (
         <div className="flex w-full h-screen bg-[#050505] overflow-hidden">
             
             {/* -----------------------------------------------------------
-                1. LEFT SIDEBAR (Only visible if NOT initializing)
+                1. LEFT SIDEBAR
                ----------------------------------------------------------- */}
             {!needsInitialization && (
-                <div className="w-20 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 shrink-0 z-50 animate-in fade-in slide-in-from-left-4 duration-500">
+                // Changed py-6 to py-0 to control top alignment better
+                <div className="w-20 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-0 shrink-0 z-50 animate-in fade-in slide-in-from-left-4 duration-500">
                     
-                    {/* Top Branding */}
-                    <div className="mb-8">
+                    {/* Top Branding - FIX ALIGNMENT */}
+                    {/* Made this container h-20 (same as header) and centered content */}
+                    <div className="h-20 flex items-center justify-center w-full mb-6">
                         <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)]">
                             RTA
                         </div>
@@ -219,8 +224,17 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                     
                     <div className="flex-1"></div>
 
-                    {/* Bottom Icons */}
-                    <div className="flex flex-col gap-4 items-center">
+                    {/* Bottom Icons - ADDED PROFILE ICON */}
+                    <div className="flex flex-col gap-4 items-center mb-6">
+                        {/* New Profile Icon */}
+                        <button 
+                            className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-white transition-all" 
+                            title="Profile / History"
+                        >
+                            <User size={20}/> 
+                        </button>
+
+                        {/* Settings Icon */}
                         <button 
                             onClick={handleResetReferences} 
                             disabled={isResetting}
@@ -230,6 +244,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                             {isResetting ? <Loader2 className="animate-spin" size={16}/> : <Home size={16}/>} 
                         </button>
                         
+                        {/* Logout Icon */}
                         <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center text-neutral-500 hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all" title="Logout">
                             <LogOut size={16}/>
                         </button>
@@ -240,13 +255,10 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             {/* --- 2. MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col relative min-w-0">
                 
-                {/* HEADER (Visible on BOTH Initialization AND Main Dashboard) 
-                   Added logic to handle layout if sidebar is missing
-                */}
+                {/* HEADER */}
                 <header className={`h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-40 ${needsInitialization ? 'px-12' : ''}`}>
                      {/* LEFT: Class Info */}
                      <div className="flex items-center gap-4">
-                        {/* If Initializing, show RTA logo here since sidebar is gone */}
                         {needsInitialization && (
                             <div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)] mr-2">
                                 RTA
@@ -254,14 +266,17 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                         )}
                         <div>
                             <h1 className="text-xl font-black text-white tracking-tighter leading-none">{mainTitle}</h1>
-                            <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                            {/* FIX: Only render subtitle if it exists (removes Visualization Foundation) */}
+                            {subTitle && (
+                                <p className="text-[10px] text-[#d90238] font-bold uppercase tracking-[0.2em] mt-1">{subTitle}</p>
+                            )}
                         </div>
                      </div>
 
-                     {/* RIGHT: Logout button (Only visible here during Initialization) */}
+                     {/* RIGHT: Logout button (Only during Initialization) */}
                      {needsInitialization && (
                         <button onClick={handleLogout} className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest border border-white/10 px-4 py-2 rounded-full hover:bg-white/5">
-                            <LogOut size={14}/> Logout
+                            <LogOut size={14}/> LOGOUT
                         </button>
                      )}
                 </header>
