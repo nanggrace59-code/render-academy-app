@@ -7,7 +7,7 @@ import {
   login, saveStudentReferences, getStudentSubmissions, submitAssignment, getAcademyGallery 
 } from '@/services/api';
 
-// --- RESTORED: IMPORT YOUR ORIGINAL IMAGESLIDER ---
+// RESTORED: IMPORT YOUR ORIGINAL IMAGESLIDER
 import { ImageSlider } from '@/components/ImageSlider';
 import { Profile, Submission } from '@/types';
 import { 
@@ -15,7 +15,7 @@ import {
   Upload, CheckCircle, AlertCircle, Clock, 
   ChevronRight, Send, RefreshCw, X,
   LayoutGrid, MonitorPlay, Settings, LogOut,
-  User
+  User, Mail, GraduationCap, Calendar
 } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -53,7 +53,8 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
     const [history, setHistory] = useState<Submission[]>([]);
     const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
     
-    const [viewMode, setViewMode] = useState<'workspace' | 'gallery'>('workspace');
+    // --- CHANGE: Added 'profile' mode ---
+    const [viewMode, setViewMode] = useState<'workspace' | 'gallery' | 'profile'>('workspace');
     const [context, setContext] = useState<'interior' | 'exterior'>('interior');
     const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false);
@@ -73,12 +74,13 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
 
     useEffect(() => { 
         const loadData = async () => {
-            if (viewMode === 'workspace') {
-                const all = await getStudentSubmissions(user.id);
-                if (all) {
-                    const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
-                                                .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-                    setHistory(currentLevelSubs);
+            // Load history for both workspace and profile views
+            const all = await getStudentSubmissions(user.id);
+            if (all) {
+                setHistory(all.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()));
+                
+                if (viewMode === 'workspace') {
+                    const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level);
                     const latest = currentLevelSubs.length > 0 ? currentLevelSubs[currentLevelSubs.length - 1] : null;
                     if (latest && latest.status !== 'rejected') {
                         setSelectedHistoryId(latest.id);
@@ -86,7 +88,9 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                         setSelectedHistoryId(null); 
                     }
                 }
-            } else {
+            }
+
+            if (viewMode === 'gallery') {
                 const gal = await getAcademyGallery();
                 if (gal) setGallerySubmissions(gal);
             }
@@ -102,6 +106,9 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                 if (error) throw error;
                 const updatedUser = { ...user, references: undefined };
                 setUser(updatedUser); 
+                // Also reset views
+                setViewMode('workspace');
+                setRefPreviews({ interior: '', exterior: '' });
             } catch (error) {
                 console.error("Error resetting references:", error);
                 alert("Failed to reset references.");
@@ -148,11 +155,10 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         setIsSubmitting(true);
         const refUrl = context === 'interior' ? user.references?.interior : user.references?.exterior;
         await submitAssignment(user.id, user.current_level, refUrl || '', renderFile, studentNote);
+        // Reload history after submit
         const all = await getStudentSubmissions(user.id);
         if (all) {
-            const currentLevelSubs = all.filter(s => s.assignment_number === user.current_level)
-                                        .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-            setHistory(currentLevelSubs);
+             setHistory(all.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()));
         }
         setRenderFile(null);
         setRenderPreview('');
@@ -165,14 +171,18 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
         window.location.href = '/login';
     };
 
-    const latestSubmission = history.length > 0 ? history[history.length - 1] : null;
+    // Filter history for current workspace view
+    const currentLevelHistory = history.filter(s => s.assignment_number === user.current_level);
+    const latestSubmission = currentLevelHistory.length > 0 ? currentLevelHistory[currentLevelHistory.length - 1] : null;
     const isLatestPending = latestSubmission?.status === 'pending';
     const isLatestApproved = latestSubmission?.status === 'approved';
     const isLatestRejected = latestSubmission?.status === 'rejected';
     const canUpload = !latestSubmission || isLatestRejected;
+    
     const currentRefImage = context === 'interior' ? user.references?.interior : user.references?.exterior;
     let currentRenderImage = renderPreview;
     let viewStatus = 'DRAFT';
+    
     if (selectedHistoryId) {
         const sub = history.find(h => h.id === selectedHistoryId);
         if (sub) {
@@ -196,7 +206,8 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                     </div>
                     <div className="flex-1"></div>
                     <div className="flex flex-col gap-4 items-center mb-6">
-                        <button className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-white transition-all" title="Profile / History"><User size={20}/> </button>
+                        {/* --- CHANGE: Updated Profile Button to switch viewMode --- */}
+                        <button onClick={() => setViewMode('profile')} className={`w-10 h-10 rounded-full border border-white/5 flex items-center justify-center transition-all ${viewMode === 'profile' ? 'bg-white text-black shadow-lg scale-105' : 'text-neutral-500 hover:bg-white/5 hover:text-white'}`} title="Profile / History"><User size={20}/> </button>
                         <button onClick={handleResetReferences} disabled={isResetting} className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center text-neutral-500 hover:bg-white/5 hover:text-white transition-all disabled:opacity-50" title="Settings">{isResetting ? <Loader2 className="animate-spin" size={16}/> : <Home size={16}/>} </button>
                         <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center text-neutral-500 hover:bg-[#d90238] hover:border-[#d90238] hover:text-white transition-all" title="Logout"><LogOut size={16}/></button>
                     </div>
@@ -204,7 +215,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
             )}
 
             <div className="flex-1 flex flex-col relative min-w-0">
-                <header className={`h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-40 ${needsInitialization ? 'px-12' : ''}`}>
+                <header className={`h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-40 ${needsInitialization ? 'px-12' : ''} animate-in fade-in slide-in-from-top-4 duration-500`}>
                      <div className="flex items-center gap-4">
                         {needsInitialization && (<div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)] mr-2">RTA</div>)}
                         <div>
@@ -232,12 +243,13 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                             </div>
                         </div>
                     ) : (
-                        viewMode === 'workspace' ? (
+                        // --- MAIN VIEW SWITCHER ---
+                        <>
+                        {viewMode === 'workspace' && (
                             <>
-                                <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-6">
+                                <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-6 animate-in fade-in">
                                     <div className="w-full h-full aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                                         {currentRefImage && currentRenderImage ? (
-                                            /* --- RESTORED: USING YOUR ORIGINAL IMAGESLIDER --- */
                                             <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                         ) : currentRefImage ? (
                                             <div className="w-full h-full relative group flex items-center justify-center"><img src={currentRefImage} className="w-full h-full object-contain opacity-50 grayscale transition-all duration-700"/></div>
@@ -255,15 +267,92 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                     </div>
                                 </div>
 
-                                <div className="w-[400px] bg-[#0a0a0a] border-l border-white/5 flex flex-col shrink-0 z-40 shadow-2xl">
+                                <div className="w-[400px] bg-[#0a0a0a] border-l border-white/5 flex flex-col shrink-0 z-40 shadow-2xl animate-in slide-in-from-right-4">
                                     <div className="p-6 border-b border-white/5 bg-[#0a0a0a]"><h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4">Submission Context</h3><div className="flex bg-[#111] rounded-lg p-1 border border-white/5"><button onClick={() => setContext('interior')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'interior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}><Home size={12}/> Interior</button><button onClick={() => setContext('exterior')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'exterior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}><Building size={12}/> Exterior</button></div></div>
-                                    <div className="p-6 border-b border-white/5"><h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Timeline</h3><div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">{history.map((sub, idx) => (<button key={sub.id} onClick={() => setSelectedHistoryId(sub.id)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId && selectedHistoryId !== sub.id ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}><div className={`w-10 h-10 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${selectedHistoryId === sub.id ? 'bg-white text-black scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : sub.status === 'rejected' ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : sub.status === 'approved' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-amber-500 text-amber-500 bg-amber-500/10'}`}>v{idx + 1}</div></button>))}{canUpload && (<button onClick={() => setSelectedHistoryId(null)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId !== null ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}><div className={`w-10 h-10 rounded-full border border-dashed border-neutral-700 flex items-center justify-center text-neutral-500 transition-all ${selectedHistoryId === null ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : 'hover:border-neutral-500 hover:text-white'}`}><Upload size={14}/></div></button>)}</div></div>
+                                    <div className="p-6 border-b border-white/5"><h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Timeline</h3><div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">{currentLevelHistory.map((sub, idx) => (<button key={sub.id} onClick={() => setSelectedHistoryId(sub.id)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId && selectedHistoryId !== sub.id ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}><div className={`w-10 h-10 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${selectedHistoryId === sub.id ? 'bg-white text-black scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : sub.status === 'rejected' ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : sub.status === 'approved' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-amber-500 text-amber-500 bg-amber-500/10'}`}>v{idx + 1}</div></button>))}{canUpload && (<button onClick={() => setSelectedHistoryId(null)} className={`flex flex-col items-center gap-2 group min-w-[60px] cursor-pointer transition-opacity ${selectedHistoryId !== null ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}><div className={`w-10 h-10 rounded-full border border-dashed border-neutral-700 flex items-center justify-center text-neutral-500 transition-all ${selectedHistoryId === null ? 'border-[#d90238] text-[#d90238] bg-[#d90238]/10' : 'hover:border-neutral-500 hover:text-white'}`}><Upload size={14}/></div></button>)}</div></div>
                                     <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-[#0a0a0a]">
-                                        {selectedHistoryId ? (<div className="space-y-6 animate-in slide-in-from-right-4">{history.find(h => h.id === selectedHistoryId)?.teacher_comment && (<div className="bg-[#d90238]/10 border border-[#d90238]/20 p-4 rounded-xl"><h4 className="text-[#d90238] text-xs font-bold uppercase mb-2 flex items-center gap-2"><AlertCircle size={14}/> Instructor Feedback</h4><p className="text-neutral-300 text-sm leading-relaxed font-medium">"{history.find(h => h.id === selectedHistoryId)?.teacher_comment}"</p></div>)}<div className="bg-white/5 border border-white/5 p-4 rounded-xl"><h4 className="text-neutral-500 text-[10px] font-bold uppercase mb-2">Student Note</h4><p className="text-neutral-400 text-sm italic">"{history.find(h => h.id === selectedHistoryId)?.student_message || 'No notes added.'}"</p></div>{isLatestRejected && selectedHistoryId === latestSubmission?.id && (<button onClick={() => setSelectedHistoryId(null)} className="w-full py-4 bg-[#d90238] hover:bg-[#b0022d] text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20">Start Revision (v{history.length + 1}) <ChevronRight size={14}/></button>)}</div>) : !canUpload && isLatestPending ? (<div className="flex flex-col items-center justify-center h-full text-center p-6 border border-amber-500/20 bg-amber-500/5 rounded-xl"><Clock size={32} className="text-amber-500 mb-4 animate-pulse"/><h3 className="text-white font-bold text-lg">Under Review</h3><p className="text-neutral-500 text-sm mt-2 leading-relaxed">Your instructor is reviewing your submission.</p></div>) : !canUpload && isLatestApproved ? (<div className="flex flex-col items-center justify-center h-full text-center p-6 border border-emerald-500/20 bg-emerald-500/5 rounded-xl"><CheckCircle size={32} className="text-emerald-500 mb-4"/><h3 className="text-white font-bold text-lg">Approved</h3><p className="text-neutral-500 text-sm mt-2 leading-relaxed">You have passed this protocol.</p></div>) : (<div className="flex flex-col h-full animate-in slide-in-from-right-4"><h3 className="text-white text-lg font-bold mb-1">Submit Render</h3><p className="text-neutral-500 text-xs mb-6">Upload your {context} render for review.</p><label className={`flex-1 min-h-[150px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all mb-6 relative group ${renderPreview ? 'border-[#d90238] bg-[#d90238]/5' : 'border-white/10 hover:border-[#d90238]/50 hover:bg-white/5'}`}><input type="file" accept="image/*" className="hidden" onChange={(e) => { if(e.target.files?.[0]) { setRenderFile(e.target.files[0]); setRenderPreview(URL.createObjectURL(e.target.files[0])); }}}/>{renderPreview ? (<div className="relative w-full h-full p-2"><img src={renderPreview} className="w-full h-full object-contain rounded-lg"/><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg backdrop-blur-sm"><span className="text-white text-xs font-bold uppercase flex items-center gap-2"><RefreshCw size={14}/> Change Image</span></div></div>) : (<div className="flex flex-col items-center text-neutral-500 group-hover:text-white transition-colors"><div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#d90238] transition-colors"><Upload size={20}/></div><span className="text-xs font-bold uppercase tracking-widest">Click to Upload</span></div>)}</label><div className="space-y-4"><textarea value={studentNote} onChange={(e) => setStudentNote(e.target.value)} placeholder="Notes..." className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#d90238] focus:outline-none resize-none h-20 placeholder:text-neutral-700"/><button onClick={handleSubmit} disabled={!renderPreview || isSubmitting} className="w-full py-4 bg-[#d90238] hover:bg-[#b0022d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(217,2,56,0.3)] hover:shadow-[0_0_30px_rgba(217,2,56,0.5)]">{isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Send size={14}/> Submit</>}</button></div></div>)}</div></div>
+                                        {selectedHistoryId ? (<div className="space-y-6 animate-in slide-in-from-right-4">{history.find(h => h.id === selectedHistoryId)?.teacher_comment && (<div className="bg-[#d90238]/10 border border-[#d90238]/20 p-4 rounded-xl"><h4 className="text-[#d90238] text-xs font-bold uppercase mb-2 flex items-center gap-2"><AlertCircle size={14}/> Instructor Feedback</h4><p className="text-neutral-300 text-sm leading-relaxed font-medium">"{history.find(h => h.id === selectedHistoryId)?.teacher_comment}"</p></div>)}<div className="bg-white/5 border border-white/5 p-4 rounded-xl"><h4 className="text-neutral-500 text-[10px] font-bold uppercase mb-2">Student Note</h4><p className="text-neutral-400 text-sm italic">"{history.find(h => h.id === selectedHistoryId)?.student_message || 'No notes added.'}"</p></div>{isLatestRejected && selectedHistoryId === latestSubmission?.id && (<button onClick={() => setSelectedHistoryId(null)} className="w-full py-4 bg-[#d90238] hover:bg-[#b0022d] text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20">Start Revision (v{currentLevelHistory.length + 1}) <ChevronRight size={14}/></button>)}</div>) : !canUpload && isLatestPending ? (<div className="flex flex-col items-center justify-center h-full text-center p-6 border border-amber-500/20 bg-amber-500/5 rounded-xl"><Clock size={32} className="text-amber-500 mb-4 animate-pulse"/><h3 className="text-white font-bold text-lg">Under Review</h3><p className="text-neutral-500 text-sm mt-2 leading-relaxed">Your instructor is reviewing your submission.</p></div>) : !canUpload && isLatestApproved ? (<div className="flex flex-col items-center justify-center h-full text-center p-6 border border-emerald-500/20 bg-emerald-500/5 rounded-xl"><CheckCircle size={32} className="text-emerald-500 mb-4"/><h3 className="text-white font-bold text-lg">Approved</h3><p className="text-neutral-500 text-sm mt-2 leading-relaxed">You have passed this protocol.</p></div>) : (<div className="flex flex-col h-full animate-in slide-in-from-right-4"><h3 className="text-white text-lg font-bold mb-1">Submit Render</h3><p className="text-neutral-500 text-xs mb-6">Upload your {context} render for review.</p><label className={`flex-1 min-h-[150px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all mb-6 relative group ${renderPreview ? 'border-[#d90238] bg-[#d90238]/5' : 'border-white/10 hover:border-[#d90238]/50 hover:bg-white/5'}`}><input type="file" accept="image/*" className="hidden" onChange={(e) => { if(e.target.files?.[0]) { setRenderFile(e.target.files[0]); setRenderPreview(URL.createObjectURL(e.target.files[0])); }}}/>{renderPreview ? (<div className="relative w-full h-full p-2"><img src={renderPreview} className="w-full h-full object-contain rounded-lg"/><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg backdrop-blur-sm"><span className="text-white text-xs font-bold uppercase flex items-center gap-2"><RefreshCw size={14}/> Change Image</span></div></div>) : (<div className="flex flex-col items-center text-neutral-500 group-hover:text-white transition-colors"><div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#d90238] transition-colors"><Upload size={20}/></div><span className="text-xs font-bold uppercase tracking-widest">Click to Upload</span></div>)}</label><div className="space-y-4"><textarea value={studentNote} onChange={(e) => setStudentNote(e.target.value)} placeholder="Notes..." className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#d90238] focus:outline-none resize-none h-20 placeholder:text-neutral-700"/>
+                                    
+                                    {/* --- CHANGE 1: SMALLER, CENTERED SUBMIT BUTTON --- */}
+                                    <div className="flex justify-center pt-2">
+                                        <button onClick={handleSubmit} disabled={!renderPreview || isSubmitting} className="px-8 py-3 bg-[#d90238] hover:bg-[#b0022d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold uppercase tracking-widest text-xs rounded-full transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(217,2,56,0.3)] hover:shadow-[0_0_30px_rgba(217,2,56,0.5)] hover:scale-105 active:scale-95">{isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Send size={14}/> Submit Render</>}</button>
+                                    </div>
+
+                                </div></div>)}</div></div>
                             </>
-                        ) : (
+                        )}
+
+                        {viewMode === 'gallery' && (
                             <div className="flex-1 bg-[#020202] p-8 overflow-y-auto animate-in fade-in"><div className="mb-8"><h1 className="text-3xl font-black text-white tracking-tight">Academy Gallery</h1><p className="text-neutral-500 text-sm mt-2">Explore approved submissions from fellow students.</p></div><div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">{gallerySubmissions.map(sub => (<div key={sub.id} className="aspect-square bg-[#0a0a0a] border border-white/5 rounded-xl overflow-hidden relative group cursor-pointer hover:border-[#d90238]/50 transition-all"><img src={sub.render_image_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"/><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end"><p className="text-white font-bold text-sm">Assignment {String(sub.assignment_number).padStart(2,'0')}</p><p className="text-[10px] text-[#d90238] font-mono uppercase tracking-widest">Approved Work</p></div></div>))}</div></div>
-                        )
+                        )}
+
+                        {/* --- CHANGE 2: NEW PROFILE VIEW UI --- */}
+                        {viewMode === 'profile' && (
+                            <div className="flex-1 bg-[#020202] p-12 overflow-y-auto animate-in fade-in slide-in-from-bottom-4">
+                                <div className="max-w-5xl mx-auto space-y-12">
+                                    {/* Header Section */}
+                                    <div className="flex items-center gap-8 border-b border-white/10 pb-12">
+                                        <div className="w-32 h-32 bg-[#d90238] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(217,2,56,0.3)]">
+                                            <span className="text-5xl font-black text-white">{user.full_name?.charAt(0).toUpperCase() || 'S'}</span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h2 className="text-4xl font-black text-white tracking-tight">{user.full_name || 'Student'}</h2>
+                                                <p className="text-neutral-400 flex items-center gap-2 mt-1"><Mail size={14}/> {user.email}</p>
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg flex items-center gap-3">
+                                                    <GraduationCap className="text-[#d90238]" size={20}/>
+                                                    <div><p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Class Level</p><p className="text-white font-bold uppercase">{user.enrolled_class.replace('_', ' ')}</p></div>
+                                                </div>
+                                                <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg flex items-center gap-3">
+                                                    <CheckCircle className="text-emerald-500" size={20}/>
+                                                    <div><p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Current Assignment</p><p className="text-white font-bold">#{user.current_level}</p></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* History Section */}
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3"><History size={24} className="text-neutral-500"/> Submission History</h3>
+                                        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                                            <table className="w-full text-left text-sm text-neutral-400">
+                                                <thead className="text-[10px] uppercase tracking-widest bg-black/40 text-neutral-500 font-bold">
+                                                    <tr>
+                                                        <th className="px-6 py-4">Assignment</th>
+                                                        <th className="px-6 py-4">Status</th>
+                                                        <th className="px-6 py-4">Submitted On</th>
+                                                        <th className="px-6 py-4 text-right">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {history.length === 0 ? (
+                                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-neutral-500 italic">No submissions yet.</td></tr>
+                                                    ) : (
+                                                        history.map((sub) => (
+                                                            <tr key={sub.id} className="hover:bg-white/5 transition-colors">
+                                                                <td className="px-6 py-4 font-bold text-white">#{sub.assignment_number}</td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${sub.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' : sub.status === 'rejected' ? 'bg-[#d90238]/10 text-[#d90238] border-[#d90238]/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30'}`}>
+                                                                        {sub.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 flex items-center gap-2"><Calendar size={14}/> {new Date(sub.created_at!).toLocaleDateString()}</td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <button onClick={() => { setViewMode('workspace'); setSelectedHistoryId(sub.id); }} className="text-[#d90238] hover:text-white hover:underline text-xs font-bold uppercase tracking-widest">View Details</button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
             </div>
