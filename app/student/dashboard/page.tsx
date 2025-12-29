@@ -283,9 +283,10 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                 <div className="flex-1 flex overflow-hidden">
                     {viewMode === 'workspace' ? (
                         <>
-                            {/* VISUAL AREA */}
-                            <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-8">
-                                <div className="w-full max-w-[1600px] aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                            {/* VISUAL AREA (Center) - EXPANDED TO FIT */}
+                            <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-4">
+                                {/* Changed p-8 to p-4 and removed max-w-[1600px] to allow more width, or increased it */}
+                                <div className="w-full h-full max-h-full aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                                     {currentRefImage && currentRenderImage ? (
                                         <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                     ) : currentRefImage ? (
@@ -295,6 +296,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center opacity-20"><p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Select Context</p></div>
                                     )}
+
                                     <div className="absolute bottom-8 left-8 z-20 pointer-events-none">
                                         <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-2 ${viewStatus === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : viewStatus === 'REJECTED' ? 'bg-[#d90238]/10 border-[#d90238]/30 text-[#d90238]' : viewStatus === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-white/5 border-white/10 text-neutral-400'}`}>
                                             {viewStatus === 'PENDING' && <Clock size={14}/>}
@@ -306,7 +308,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                 </div>
                             </div>
 
-                            {/* RIGHT SIDEBAR */}
+                            {/* RIGHT SIDEBAR (Tools & Upload) */}
                             <div className="w-[400px] bg-[#0a0a0a] border-l border-white/5 flex flex-col shrink-0 z-40 shadow-2xl">
                                 <div className="p-6 border-b border-white/5 bg-[#0a0a0a]">
                                     <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4">Submission Context</h3>
@@ -315,6 +317,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                         <button onClick={() => setContext('exterior')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${context === 'exterior' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-500 hover:text-white'}`}><Building size={12}/> Exterior</button>
                                     </div>
                                 </div>
+
                                 <div className="p-6 border-b border-white/5">
                                     <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Timeline</h3>
                                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -330,6 +333,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                         )}
                                     </div>
                                 </div>
+
                                 <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-[#0a0a0a]">
                                     {selectedHistoryId ? (
                                         <div className="space-y-6 animate-in slide-in-from-right-4">
