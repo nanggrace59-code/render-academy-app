@@ -39,43 +39,54 @@ export function AdvancedImageComparator({ referenceImage, renderImage, className
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-    // Helper for Small Floating Buttons
     const ModeBtn = ({ icon: Icon, active, onClick, title }: any) => (
         <button 
             onClick={onClick} 
             title={title} 
-            className={`p-1.5 rounded-md transition-all flex items-center justify-center ${active ? 'bg-[#d90238] text-white shadow-md' : 'bg-black/60 text-neutral-400 hover:text-white hover:bg-black/80 backdrop-blur-sm border border-white/10'}`}
+            className={`p-2 rounded-lg transition-all flex items-center justify-center ${active ? 'bg-[#d90238] text-white shadow-[0_0_10px_rgba(217,2,56,0.5)]' : 'bg-black/60 text-neutral-400 hover:text-white hover:bg-black/80 backdrop-blur-sm border border-white/10'}`}
         >
-            <Icon size={14} />
+            <Icon size={16} />
         </button>
     );
 
     return (
-        <div ref={wrapperRef} className={`relative bg-[#020202] overflow-hidden rounded-xl border border-white/10 group ${className} ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none border-none w-screen h-screen' : 'w-full h-full'}`}>
+        <div ref={wrapperRef} className={`relative bg-[#020202] overflow-hidden group ${className} ${isFullscreen ? 'fixed inset-0 z-[100] w-screen h-screen' : 'w-full h-full'}`}>
             
-            {/* --- TOP FLOATING CONTROLS (Google Style) --- */}
-            <div className="absolute top-3 left-3 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            {/* --- TOP CONTROLS --- */}
+            <div className="absolute top-4 left-4 z-40 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <ModeBtn icon={Columns} active={mode === 'slider'} onClick={() => setMode('slider')} title="Slider" />
                 <ModeBtn icon={GalleryVerticalEnd} active={mode === 'split'} onClick={() => setMode('split')} title="Split" />
                 <ModeBtn icon={Layers} active={mode === 'overlay'} onClick={() => setMode('overlay')} title="Overlay" />
                 <ModeBtn icon={Eye} active={mode === 'full'} onClick={() => setMode('full')} title="Full View" />
             </div>
 
-            <div className="absolute top-3 right-3 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="flex items-center gap-1 p-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10">
-                    <button onClick={() => transformRef.current?.zoomIn()} className="p-1 text-neutral-400 hover:text-white"><ZoomIn size={14}/></button>
-                    <button onClick={() => transformRef.current?.zoomOut()} className="p-1 text-neutral-400 hover:text-white"><ZoomOut size={14}/></button>
-                    <button onClick={() => transformRef.current?.resetTransform()} className="p-1 text-neutral-400 hover:text-white"><RotateCcw size={14}/></button>
+            <div className="absolute top-4 right-4 z-40 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="flex items-center gap-1 p-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10">
+                    <button onClick={() => transformRef.current?.zoomIn()} className="p-1.5 text-neutral-400 hover:text-white"><ZoomIn size={16}/></button>
+                    <button onClick={() => transformRef.current?.zoomOut()} className="p-1.5 text-neutral-400 hover:text-white"><ZoomOut size={16}/></button>
+                    <button onClick={() => transformRef.current?.resetTransform()} className="p-1.5 text-neutral-400 hover:text-white"><RotateCcw size={16}/></button>
                 </div>
-                <button onClick={toggleFullscreen} className="p-1.5 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-neutral-400 hover:text-white hover:bg-[#d90238]">
-                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                <button onClick={toggleFullscreen} className="p-2.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 text-neutral-400 hover:text-white hover:bg-[#d90238]">
+                    {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
             </div>
 
-            {/* --- MAIN VISUAL AREA --- */}
-            <TransformWrapper ref={transformRef} centerOnInit={true} minScale={0.5} wheel={{ step: 0.1 }}>
-                <TransformComponent wrapperClass="w-full h-full" contentClass="w-full h-full flex items-center justify-center">
+            {/* --- MAIN VISUAL AREA (FIXED HEIGHT) --- */}
+            <TransformWrapper 
+                ref={transformRef} 
+                centerOnInit={true} 
+                minScale={0.5} 
+                maxScale={8} 
+                wheel={{ step: 0.1 }}
+                alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
+            >
+                {/* FIX: wrapperStyle ensures the zoom component takes full space */}
+                <TransformComponent 
+                    wrapperStyle={{ width: "100%", height: "100%" }} 
+                    contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
                     
+                    {/* A. SLIDER MODE */}
                     {mode === 'slider' && (
                         <div className="relative w-full h-full flex items-center justify-center select-none">
                             <img src={referenceImage} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
@@ -83,57 +94,66 @@ export function AdvancedImageComparator({ referenceImage, renderImage, className
                                 <img src={renderImage} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                             </div>
                             <div className="absolute inset-0 w-full h-full pointer-events-auto" style={{ cursor: 'ew-resize' }}>
-                                <input type="range" min="0" max="100" value={sliderPosition} onChange={(e) => setSliderPosition(Number(e.target.value))} className="absolute top-0 bottom-0 z-20 w-full h-full opacity-0 cursor-ew-resize" />
-                                <div className="absolute top-0 bottom-0 w-0.5 bg-white/80 shadow-[0_0_10px_rgba(0,0,0,0.5)] pointer-events-none" style={{ left: `${sliderPosition}%` }}>
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-[#d90238] shadow-lg">
-                                        <Columns size={12} className="rotate-90" />
+                                <input type="range" min="0" max="100" value={sliderPosition} onChange={(e) => setSliderPosition(Number(e.target.value))} 
+                                    className="absolute top-0 bottom-0 z-20 w-full h-full opacity-0 cursor-ew-resize m-0 p-0 appearance-none bg-transparent" 
+                                />
+                                <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_15px_rgba(0,0,0,0.8)] pointer-events-none" style={{ left: `${sliderPosition}%` }}>
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#d90238] shadow-xl border-2 border-black/10">
+                                        <Columns size={14} className="rotate-90" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {/* B. SPLIT MODE (REMOVED PADDING FOR LARGER IMAGES) */}
                     {mode === 'split' && (
-                        <div className="flex w-full h-full gap-1 p-2">
-                            <div className="flex-1 relative border border-white/10 rounded overflow-hidden flex items-center justify-center">
-                                <img src={referenceImage} className="w-full h-full object-contain" />
-                                <span className="absolute top-2 left-2 bg-black/60 text-white text-[9px] px-2 py-0.5 rounded border border-white/10">Reference</span>
+                        <div className="flex w-full h-full items-center justify-center bg-black/50">
+                            <div className="w-1/2 h-full relative border-r border-white/20">
+                                <img src={referenceImage} className="w-full h-full object-contain pointer-events-none" />
+                                <span className="absolute top-4 left-4 bg-black/60 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-md">Reference</span>
                             </div>
-                            <div className="flex-1 relative border border-white/10 rounded overflow-hidden flex items-center justify-center">
-                                <img src={renderImage} className="w-full h-full object-contain" />
-                                <span className="absolute top-2 left-2 bg-[#d90238] text-white text-[9px] px-2 py-0.5 rounded">Student</span>
+                            <div className="w-1/2 h-full relative">
+                                <img src={renderImage} className="w-full h-full object-contain pointer-events-none" />
+                                <span className="absolute top-4 left-4 bg-[#d90238] text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-lg">Student</span>
                             </div>
                         </div>
                     )}
 
+                    {/* C. OVERLAY MODE */}
                     {mode === 'overlay' && (
-                        <div className="relative w-full h-full flex items-center justify-center">
-                            <img src={referenceImage} className="absolute inset-0 w-full h-full object-contain" />
-                            <img src={renderImage} className="absolute inset-0 w-full h-full object-contain transition-opacity duration-100" style={{ opacity: overlayOpacity / 100 }} />
+                        <div className="relative w-full h-full flex items-center justify-center select-none">
+                            <img src={referenceImage} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                            <img src={renderImage} className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-75" style={{ opacity: overlayOpacity / 100 }} />
                         </div>
                     )}
 
+                    {/* D. FULL VIEW MODE */}
                     {mode === 'full' && (
-                        <div className="relative w-full h-full flex items-center justify-center">
-                            <img src={fullViewTarget === 'render' ? renderImage : referenceImage} className="w-full h-full object-contain" />
+                        <div className="relative w-full h-full flex items-center justify-center select-none">
+                            <img src={fullViewTarget === 'render' ? renderImage : referenceImage} className="w-full h-full object-contain pointer-events-none" />
                         </div>
                     )}
 
                 </TransformComponent>
             </TransformWrapper>
 
-            {/* --- BOTTOM FLOATING CONTROLS --- */}
+            {/* --- BOTTOM CONTROLS --- */}
             {mode === 'overlay' && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-48 bg-black/60 backdrop-blur-md p-2 rounded-full border border-white/10 flex flex-col gap-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100">
-                    <div className="flex justify-between text-[8px] text-neutral-400 font-bold uppercase px-2"><span>Ref</span><span>Assignment</span></div>
-                    <input type="range" min="0" max="100" value={overlayOpacity} onChange={(e) => setOverlayOpacity(Number(e.target.value))} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#d90238] [&::-webkit-slider-thumb]:rounded-full" />
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-72 bg-black/80 backdrop-blur-md p-4 rounded-full border border-white/10 flex flex-col gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 pointer-events-auto">
+                    <div className="flex justify-between w-full text-[10px] text-neutral-400 font-bold uppercase tracking-widest px-2">
+                        <span>Ref</span>
+                        <span className="text-white">{overlayOpacity}%</span>
+                        <span>Student</span>
+                    </div>
+                    <input type="range" min="0" max="100" value={overlayOpacity} onChange={(e) => setOverlayOpacity(Number(e.target.value))} className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[#d90238] [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 transition-all" />
                 </div>
             )}
 
             {mode === 'full' && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-black/60 backdrop-blur-md p-1 rounded-full border border-white/10 flex items-center gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100">
-                    <button onClick={() => setFullViewTarget('reference')} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${fullViewTarget === 'reference' ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'}`}>Reference</button>
-                    <button onClick={() => setFullViewTarget('render')} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${fullViewTarget === 'render' ? 'bg-[#d90238] text-white' : 'text-neutral-400 hover:text-white'}`}>Student</button>
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 bg-black/80 backdrop-blur-md p-2 rounded-full border border-white/10 flex items-center gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 pointer-events-auto">
+                    <button onClick={() => setFullViewTarget('reference')} className={`px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${fullViewTarget === 'reference' ? 'bg-white text-black shadow-lg' : 'text-neutral-400 hover:text-white hover:bg-white/10'}`}>Reference</button>
+                    <button onClick={() => setFullViewTarget('render')} className={`px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${fullViewTarget === 'render' ? 'bg-[#d90238] text-white shadow-lg' : 'text-neutral-400 hover:text-white hover:bg-white/10'}`}>Student</button>
                 </div>
             )}
         </div>
