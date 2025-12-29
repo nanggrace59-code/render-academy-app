@@ -7,8 +7,8 @@ import {
   login, saveStudentReferences, getStudentSubmissions, submitAssignment, getAcademyGallery 
 } from '@/services/api';
 
-// IMPORT THE NEW ADVANCED COMPARATOR
-import { AdvancedImageComparator } from '@/components/AdvancedImageComparator';
+// --- RESTORED: IMPORT YOUR ORIGINAL IMAGESLIDER ---
+import { ImageSlider } from '@/components/ImageSlider';
 import { Profile, Submission } from '@/types';
 import { 
   Loader2, Home, Building, History, 
@@ -18,7 +18,6 @@ import {
   User
 } from 'lucide-react';
 
-// --- FIX: MUST BE DEFAULT EXPORT FOR NEXT.JS PAGE ---
 export default function StudentDashboard() {
     const router = useRouter(); 
     const [user, setUser] = useState<Profile | null>(null);
@@ -50,7 +49,6 @@ export default function StudentDashboard() {
     );
 }
 
-// --- MAIN WORKSPACE LOGIC ---
 function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profile) => void }) {
     const [history, setHistory] = useState<Submission[]>([]);
     const [gallerySubmissions, setGallerySubmissions] = useState<Submission[]>([]);
@@ -187,8 +185,6 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
 
     return (
         <div className="flex w-full h-screen bg-[#050505] overflow-hidden">
-            
-            {/* 1. LEFT SIDEBAR */}
             {!needsInitialization && (
                 <div className="w-20 bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-0 shrink-0 z-50 animate-in fade-in slide-in-from-left-4 duration-500">
                     <div className="h-20 flex items-center justify-center w-full mb-6">
@@ -207,10 +203,7 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                 </div>
             )}
 
-            {/* 2. MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col relative min-w-0">
-                
-                {/* HEADER */}
                 <header className={`h-20 border-b border-white/5 bg-[#050505] flex items-center justify-between px-8 shrink-0 z-40 ${needsInitialization ? 'px-12' : ''}`}>
                      <div className="flex items-center gap-4">
                         {needsInitialization && (<div className="w-10 h-10 bg-[#d90238] rounded-lg flex items-center justify-center font-black text-white text-[10px] tracking-tighter leading-none shadow-[0_0_15px_rgba(217,2,56,0.3)] mr-2">RTA</div>)}
@@ -222,7 +215,6 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                      {needsInitialization && (<button onClick={handleLogout} className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest border border-white/10 px-4 py-2 rounded-full hover:bg-white/5"><LogOut size={14}/> LOGOUT</button>)}
                 </header>
 
-                {/* BODY CONTENT */}
                 <div className="flex-1 flex overflow-hidden relative">
                     {needsInitialization ? (
                         <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-[#050505] animate-in fade-in zoom-in-95 duration-500">
@@ -245,8 +237,8 @@ function StudentWorkspace({ user, setUser }: { user: Profile, setUser: (u: Profi
                                 <div className="flex-1 flex flex-col bg-[#020202] relative min-w-0 items-center justify-center p-6">
                                     <div className="w-full h-full aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                                         {currentRefImage && currentRenderImage ? (
-                                            /* --- HERE IS THE MAGIC: Using your new Google-Style Comparator --- */
-                                            <AdvancedImageComparator referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
+                                            /* --- RESTORED: USING YOUR ORIGINAL IMAGESLIDER --- */
+                                            <ImageSlider referenceImage={currentRefImage} renderImage={currentRenderImage} className="w-full h-full"/>
                                         ) : currentRefImage ? (
                                             <div className="w-full h-full relative group flex items-center justify-center"><img src={currentRefImage} className="w-full h-full object-contain opacity-50 grayscale transition-all duration-700"/></div>
                                         ) : (
