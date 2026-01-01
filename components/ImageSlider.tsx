@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
-  MoveHorizontal, Columns, Layers, Maximize, Minimize,
+  MoveHorizontal, Columns, Rows, Layers, Maximize, Minimize,
   RotateCcw, Move, Box, GripVertical, Image as ImageIcon
 } from 'lucide-react';
 
@@ -13,7 +13,7 @@ interface ImageSliderProps {
   isModalView?: boolean;
 }
 
-type ViewMode = 'slide' | 'split' | 'overlay' | 'full';
+type ViewMode = 'slide' | 'split' | 'split-vertical' | 'overlay' | 'full';
 
 interface ToolOption {
     id: ViewMode;
@@ -23,7 +23,8 @@ interface ToolOption {
 
 const DEFAULT_TOOLS: ToolOption[] = [
     { id: 'slide', label: 'Slide', icon: MoveHorizontal },
-    { id: 'split', label: 'Split', icon: Columns },
+    { id: 'split', label: 'Split H', icon: Columns },
+    { id: 'split-vertical', label: 'Split V', icon: Rows },
     { id: 'overlay', label: 'Blend', icon: Layers },
     { id: 'full', label: 'Full View', icon: Maximize },
 ];
@@ -234,6 +235,27 @@ export const ImageSlider: React.FC<ImageSliderProps> = ({
                       </div>
                       
                       {/* Right: Render */}
+                      <div className="relative overflow-hidden w-full h-full bg-black/20 group/split">
+                          <div style={transformStyle} className="w-full h-full flex items-center justify-center">
+                              <img src={renderImage} className={imageCommonClass} alt="Render" />
+                          </div>
+                          <div className="absolute top-4 right-4 bg-primary/80 backdrop-blur-sm text-white text-[10px] px-3 py-1 font-bold rounded-full pointer-events-none">RENDER</div>
+                      </div>
+                  </div>
+              );
+          case 'split-vertical':
+              return (
+                  // Stacked grid for vertical split
+                  <div className="w-full h-full grid grid-rows-2 divide-y divide-white/10 bg-[#050505]" {...mouseHandlers}>
+                      {/* Top: Reference */}
+                      <div className="relative overflow-hidden w-full h-full bg-black/20 group/split">
+                          <div style={transformStyle} className="w-full h-full flex items-center justify-center">
+                              <img src={referenceImage} className={imageCommonClass} alt="Reference" />
+                          </div>
+                          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[10px] px-3 py-1 font-bold rounded-full pointer-events-none">REF</div>
+                      </div>
+                      
+                      {/* Bottom: Render */}
                       <div className="relative overflow-hidden w-full h-full bg-black/20 group/split">
                           <div style={transformStyle} className="w-full h-full flex items-center justify-center">
                               <img src={renderImage} className={imageCommonClass} alt="Render" />
