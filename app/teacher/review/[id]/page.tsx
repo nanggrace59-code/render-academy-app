@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
-// IMPORTANT: Comparison Tool
+// IMPORTANT: Importing Comparison Tool
 import { ImageSlider } from '@/components/ImageSlider'; 
 import { 
   ArrowLeft, Check, X, MessageSquareQuote, PenTool, User, Loader2
@@ -25,7 +25,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                 .single();
 
             if (error || !data) {
-                console.error("Error fetching:", error);
+                console.error("Error fetching submission:", error);
                 router.push('/teacher/dashboard');
             } else {
                 setSubmission(data);
@@ -45,7 +45,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
 
         setIsProcessing(true);
         try {
-            // Update submission status
+            // 1. Update Submission Status
             const { error } = await supabase.from('submissions').update({ 
                 status: status, 
                 teacher_comment: feedback,
@@ -54,7 +54,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
 
             if (error) throw error;
 
-            // If Approved, Level Up
+            // 2. If Approved, Level Up
             if (status === 'approved') {
                 const nextLevel = (submission.assignment_number || 1) + 1;
                 await supabase.from('profiles')
@@ -62,7 +62,6 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                     .eq('id', submission.user_id);
             }
 
-            // Return to dashboard
             router.push('/teacher/dashboard');
         } catch (err) {
             console.error(err);
@@ -78,7 +77,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
     return (
         <div className="absolute inset-0 flex flex-col bg-[#050505] overflow-hidden font-sans">
             
-            {/* 1. HEADER (Matches Screenshot) */}
+            {/* 1. HEADER */}
             <div className="h-14 bg-[#0a0a0a] border-b border-neutral-800 flex items-center justify-between px-6 shrink-0 z-20">
                 <div className="flex items-center gap-4">
                     <button onClick={() => router.back()} className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest group">
@@ -102,7 +101,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
             {/* 2. SPLIT BODY */}
             <div className="flex-1 flex min-h-0">
                 
-                {/* LEFT: Comparison Tool (This is what you were missing!) */}
+                {/* LEFT: Comparison Tool (Image Slider) */}
                 <div className="flex-1 relative bg-black min-w-0">
                     <ImageSlider 
                         referenceImage={submission.reference_image_url} 
@@ -129,7 +128,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                             </div>
                         </div>
 
-                        {/* Student Note */}
+                        {/* Message */}
                         <div className="bg-[#111] border border-neutral-800 rounded-lg p-4 relative group hover:border-neutral-700 transition-colors">
                             <div className="absolute -top-2 left-4 px-2 bg-[#0a0a0a] text-[10px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
                                 <MessageSquareQuote size={10} /> Student Note
@@ -140,7 +139,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                         </div>
                     </div>
 
-                    {/* Teacher Feedback & Buttons */}
+                    {/* Feedback & Actions */}
                     <div className="flex-1 flex flex-col p-6 bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
