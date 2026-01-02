@@ -29,7 +29,6 @@ export default function TeacherDashboard() {
                 .order('created_at', { ascending: false });
 
             if (subs) {
-                console.log("Raw Submissions Data:", subs); // For Debugging
                 setSubmissions(subs);
             }
             setLoading(false);
@@ -37,14 +36,11 @@ export default function TeacherDashboard() {
         loadDashboard();
     }, []);
 
-    // --- FIX: ROBUST FILTERING ---
+    // Filter Logic
     const filteredSubmissions = submissions.filter(sub => {
         if (!selectedClass) return false;
-        
-        // Get student class and convert to lowercase for easy matching
         const studentClass = (sub.profiles?.enrolled_class || '').toLowerCase();
         
-        // Logic: If user selects Master Class, show anything related to 'master', 'arch', or even empty class names (fallback)
         if (selectedClass === 'master_class') {
             return studentClass.includes('master') || studentClass.includes('arch') || studentClass === ''; 
         }
@@ -80,7 +76,7 @@ export default function TeacherDashboard() {
             <div className="flex-1 p-8 w-full flex flex-col items-center">
                 
                 {!selectedClass ? (
-                    // 1. CLASS SELECTION VIEW
+                    // CLASS SELECTION VIEW
                     <div className="w-full max-w-4xl flex flex-col gap-8 animate-in fade-in">
                         <div className="text-center space-y-2 mb-4">
                             <h2 className="text-2xl font-bold text-white">Select Class</h2>
@@ -123,7 +119,7 @@ export default function TeacherDashboard() {
                         </div>
                     </div>
                 ) : (
-                    // 2. SUBMISSION LIST VIEW
+                    // SUBMISSION LIST VIEW
                     <div className="w-full max-w-5xl animate-in fade-in slide-in-from-right-8">
                         <button 
                             onClick={() => setSelectedClass(null)}
@@ -145,7 +141,6 @@ export default function TeacherDashboard() {
                             ) : filteredSubmissions.length === 0 ? (
                                 <div className="p-12 text-center">
                                     <p className="text-neutral-500 text-sm">No submissions found for this class.</p>
-                                    {/* DEBUGGING HELP: Show total submissions to confirm connection exists */}
                                     <p className="text-neutral-700 text-[10px] mt-2">
                                         (System Check: Connected. Found {submissions.length} total submissions in database)
                                     </p>
