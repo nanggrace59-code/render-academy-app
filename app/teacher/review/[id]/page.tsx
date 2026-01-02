@@ -93,20 +93,16 @@ export default function GradingConsole({ params }: { params: { id: string } }) {
             <div className="flex-1 flex min-h-0">
                 {/* Left: Comparison Tool */}
                 <div className="flex-1 relative bg-black min-w-0">
-                    <ImageSlider 
-                        referenceImage={submission.reference_image_url} 
-                        renderImage={submission.render_image_url} 
-                        className="h-full w-full border-0 rounded-none"
-                    />
+                    <ImageSlider referenceImage={submission.reference_image_url} renderImage={submission.render_image_url} className="h-full w-full border-0 rounded-none"/>
                 </div>
 
-                {/* Right: Grading Sidebar */}
+                {/* Right: Sidebar */}
                 <div className="w-[380px] bg-[#0a0a0a] border-l border-neutral-800 flex flex-col shrink-0 z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
                     <div className="p-6 border-b border-neutral-800">
                         <div className="flex items-start justify-between mb-4">
                             <div>
                                 <h2 className="text-lg font-bold text-white mb-1">{student?.full_name || 'Student'}</h2>
-                                <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono"><span className="bg-neutral-800 px-1.5 py-0.5 rounded text-[10px]">LVL {student?.current_level}</span><span>{student?.email}</span></div>
+                                <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono"><span className="bg-neutral-800 px-1.5 py-0.5 rounded text-[10px]">LVL {submission.assignment_number}</span><span>{student?.email}</span></div>
                             </div>
                             <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-neutral-500"><User size={20} /></div>
                         </div>
