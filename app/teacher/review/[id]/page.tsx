@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Next.js version of useNavigate
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
 import { ImageSlider } from '@/components/ImageSlider';
 import { 
-  ArrowLeft, Check, X, MessageSquareQuote, PenTool, User, Loader2
+  ArrowLeft, Check, X, MessageSquareQuote, PenTool, User
 } from 'lucide-react';
 
-// Next.js page receives params directly
 export default function TeacherGradingPage({ params }: { params: { id: string } }) {
-    const router = useRouter(); // Equivalent to useNavigate
+    const router = useRouter();
     const [submission, setSubmission] = useState<any>(null);
     const [student, setStudent] = useState<any>(null);
     const [comment, setComment] = useState('');
@@ -56,7 +55,6 @@ export default function TeacherGradingPage({ params }: { params: { id: string } 
             updated_at: new Date().toISOString()
         }).eq('id', submission.id);
 
-        // Level up logic
         if (student) {
              await supabase.from('profiles').update({
                 current_level: (student.current_level || 1) + 1
@@ -87,10 +85,9 @@ export default function TeacherGradingPage({ params }: { params: { id: string } 
     }
 
     return (
-        // MAIN CONTAINER: Matches your TeacherGrading.tsx absolute layout
         <div className="absolute inset-4 md:inset-6 flex flex-col bg-[#050505] rounded-lg border border-neutral-800 shadow-2xl overflow-hidden font-sans">
             
-            {/* 1. COMPACT HEADER */}
+            {/* 1. HEADER */}
             <div className="h-14 bg-[#0a0a0a] border-b border-neutral-800 flex items-center justify-between px-6 shrink-0 z-20">
                 <div className="flex items-center gap-4">
                     <button 
