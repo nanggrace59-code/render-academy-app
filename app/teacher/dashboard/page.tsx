@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
 import { 
   LayoutGrid, BookOpen, LogOut, Loader2, 
-  ArrowLeft, Clock, ChevronRight, AlertCircle
+  ArrowLeft, Clock, ChevronRight 
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -22,19 +22,13 @@ export default function TeacherDashboard() {
             const { count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'teacher');
             setStats({ pending: pendingCount || 0, students: studentCount || 0 });
 
-            // 2. Fetch ALL submissions (No Filter for now to ensure you see data)
-            const { data: subs, error } = await supabase
+            // 2. Fetch Submissions
+            const { data: subs } = await supabase
                 .from('submissions')
-                .select(`
-                    *,
-                    profiles:user_id (full_name, email, enrolled_class, current_level)
-                `)
+                .select(`*, profiles:user_id (full_name, email, enrolled_class, current_level)`)
                 .order('created_at', { ascending: false });
 
-            if (subs) {
-                console.log("Fetched Submissions:", subs); // Check Console if still empty
-                setSubmissions(subs);
-            }
+            if (subs) setSubmissions(subs);
             setLoading(false);
         };
         loadDashboard();
@@ -45,16 +39,22 @@ export default function TeacherDashboard() {
         router.push('/login');
     };
 
-    // FORCE SHOW: We show all submissions if a class is selected, regardless of name match
-    // This fixes the "No submissions found" error caused by database name mismatch
-    const displaySubmissions = submissions.filter(sub => {
+    // LINK TO GRADING FOLDER
+    const handleReviewClick = (submissionId: string) => {
+        router.push(`/teacher/Grading/${submissionId}`);
+    };
+
+    const filteredSubmissions = submissions.filter(sub => {
         if (!selectedClass) return false;
-        // Basic filtering: If you select Master Class, we try to show related items, 
-        // BUT if it fails, we show everything for debugging.
         const studentClass = (sub.profiles?.enrolled_class || '').toLowerCase();
-        if (selectedClass === 'master_class') return true; 
-        if (selectedClass === 'visualization_class') return true;
-        return true;
+        
+        if (selectedClass === 'master_class') {
+            return studentClass.includes('master') || studentClass.includes('arch') || studentClass === ''; 
+        }
+        if (selectedClass === 'visualization_class') {
+            return studentClass.includes('vis') || studentClass.includes('render');
+        }
+        return true; 
     });
 
     return (
@@ -70,10 +70,9 @@ export default function TeacherDashboard() {
 
             <div className="flex-1 p-8 w-full flex flex-col items-center">
                 {!selectedClass ? (
-                    // SELECTION VIEW
                     <div className="w-full max-w-4xl flex flex-col gap-8 animate-in fade-in">
                         <div className="text-center space-y-2 mb-4">
-                            <h2 className="text-2xl font-bold text-white">Select Class</h2>
+                            <h2 className="text-2xl font-bold text-white">Select a Class</h2>
                             <p className="text-neutral-500 text-sm">Pending Reviews: <span className="text-[#d90238] font-bold">{stats.pending}</span></p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -88,20 +87,24 @@ export default function TeacherDashboard() {
                         </div>
                     </div>
                 ) : (
-                    // LIST VIEW
                     <div className="w-full max-w-5xl animate-in fade-in slide-in-from-right-8">
                         <button onClick={() => setSelectedClass(null)} className="flex items-center gap-2 text-neutral-500 hover:text-white mb-6 transition-colors text-xs font-bold uppercase tracking-widest"><ArrowLeft size={16}/> Back to Classes</button>
                         <div className="bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden min-h-[400px]">
                             <div className="p-4 border-b border-white/10 bg-[#0f0f0f] flex justify-between items-center">
                                 <h2 className="text-sm font-bold text-white uppercase tracking-widest">Submission Queue</h2>
-                                <span className="bg-white/10 text-[10px] px-2 py-1 rounded text-white">{displaySubmissions.length} Items</span>
+                                <span className="bg-white/10 text-[10px] px-2 py-1 rounded text-white">{filteredSubmissions.length} Items</span>
                             </div>
 
                             {loading ? <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-neutral-500"/></div> : 
-                             displaySubmissions.length === 0 ? <div className="p-12 text-center text-neutral-500 text-sm">No submissions found in database.</div> : (
+                             filteredSubmissions.length === 0 ? (
+                                <div className="p-12 text-center text-neutral-500 text-sm">
+                                    No submissions found.
+                                    <p className="text-[10px] text-neutral-700 mt-2">(Debug: Total in DB: {submissions.length})</p>
+                                </div>
+                             ) : (
                                 <div className="divide-y divide-white/5">
-                                    {displaySubmissions.map((sub) => (
-                                        <div key={sub.id} onClick={() => router.push(`/teacher/review/${sub.id}`)} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
+                                    {filteredSubmissions.map((sub) => (
+                                        <div key={sub.id} onClick={() => handleReviewClick(sub.id)} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center text-white font-bold text-sm">{sub.profiles?.full_name?.[0]?.toUpperCase() || 'S'}</div>
                                                 <div>
@@ -109,7 +112,6 @@ export default function TeacherDashboard() {
                                                     <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-[10px] text-neutral-500">{sub.profiles?.email}</span>
                                                         <span className="text-[10px] bg-white/10 text-neutral-300 px-1.5 rounded">LVL {sub.assignment_number}</span>
-                                                        <span className="text-[10px] text-neutral-600 border-l border-white/10 pl-2 ml-2">{sub.profiles?.enrolled_class}</span>
                                                     </div>
                                                 </div>
                                             </div>
