@@ -153,3 +153,29 @@ export default function TeacherDashboard() {
                                                     </h4>
                                                     <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-[10px] text-neutral-500">{sub.profiles?.email}</span>
+                                                        <span className="text-[10px] bg-white/10 text-neutral-300 px-1.5 rounded">LVL {sub.assignment_number}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                                                    sub.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/5' :
+                                                    sub.status === 'approved' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5' :
+                                                    'border-[#d90238]/30 text-[#d90238] bg-[#d90238]/5'
+                                                }`}>
+                                                    {sub.status === 'pending' && <Clock size={12} className="animate-pulse"/>}
+                                                    {sub.status}
+                                                </div>
+                                                <ChevronRight size={16} className="text-neutral-600 group-hover:text-white"/>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
