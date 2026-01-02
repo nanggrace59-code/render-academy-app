@@ -3,11 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
-// IMPORTANT: Importing your ORIGINAL ImageSlider
-import { ImageSlider } from '@/components/ImageSlider'; 
+import { ImageSlider } from '@/components/ImageSlider'; // Your Comparison Tool
 import { 
-  Loader2, CheckCircle, XCircle, ChevronLeft, 
-  MessageSquare, User, Calendar
+  ArrowLeft, Check, X, MessageSquareQuote, PenTool, User, Loader2
 } from 'lucide-react';
 
 export default function ReviewPage({ params }: { params: { id: string } }) {
@@ -17,18 +15,15 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
     const [feedback, setFeedback] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // 1. Fetch the Submission Data
     useEffect(() => {
         const fetchData = async () => {
             const { data, error } = await supabase
                 .from('submissions')
-                .select('*, profiles:user_id (*)') // Get student details too
+                .select('*, profiles:user_id (*)')
                 .eq('id', params.id)
                 .single();
 
-            if (error) {
-                console.error('Error:', error);
-                alert('Submission not found or connection error.');
+            if (error || !data) {
                 router.push('/teacher/dashboard');
             } else {
                 setSubmission(data);
@@ -39,142 +34,134 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
         fetchData();
     }, [params.id, router]);
 
-    // 2. Handle Approve / Reject Logic
     const handleDecision = async (status: 'approved' | 'rejected') => {
-        // If Rejecting, Force Teacher to write Feedback
         if (status === 'rejected' && !feedback.trim()) {
-            alert("Please write a feedback note explaining why it is rejected. The student needs to know what to fix.");
+            alert("Please provide specific feedback before rejecting.");
             return;
         }
-
         if (!confirm(`Confirm ${status.toUpperCase()}?`)) return;
 
         setIsProcessing(true);
         try {
-            // A. Update Submission Status
-            const { error: subError } = await supabase
-                .from('submissions')
-                .update({ 
-                    status: status, 
-                    teacher_comment: feedback,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', params.id);
+            const { error } = await supabase.from('submissions').update({ 
+                status: status, 
+                teacher_comment: feedback,
+                updated_at: new Date().toISOString()
+            }).eq('id', params.id);
 
-            if (subError) throw subError;
+            if (error) throw error;
 
-            // B. If Approved, Level Up the Student (Next Assignment)
             if (status === 'approved') {
-                const nextLevel = submission.assignment_number + 1;
-                await supabase
-                    .from('profiles')
-                    .update({ current_level: nextLevel })
-                    .eq('id', submission.user_id);
+                await supabase.from('profiles').update({ current_level: submission.assignment_number + 1 }).eq('id', submission.user_id);
             }
-
-            alert(`Assignment successfully ${status}! Student will be notified.`);
-            router.push('/teacher/dashboard'); // Go back to list
-
-        } catch (error) {
-            console.error(error);
-            alert("Something went wrong.");
+            router.push('/teacher/dashboard');
+        } catch (err) {
+            console.error(err);
+            alert("Error updating status.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    if (loading) return <div className="h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-[#d90238]" size={32}/></div>;
-    if (!submission) return null;
+    if (loading || !submission) return <div className="h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-500"/></div>;
 
     return (
-        <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden font-sans">
+        <div className="absolute inset-0 flex flex-col bg-[#050505] overflow-hidden font-sans">
             
-            {/* Header */}
-            <header className="h-16 border-b border-white/10 bg-[#0a0a0a] flex items-center justify-between px-6 shrink-0 z-50">
+            {/* 1. HEADER */}
+            <div className="h-14 bg-[#0a0a0a] border-b border-neutral-800 flex items-center justify-between px-6 shrink-0 z-20">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => router.back()} className="p-2 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white flex items-center gap-2">
-                        <ChevronLeft size={20}/> <span className="text-xs font-bold uppercase tracking-widest">Back</span>
+                    <button onClick={() => router.back()} className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest group">
+                        <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Back
                     </button>
-                    <div className="h-6 w-px bg-white/10 mx-2"></div>
-                    <div>
-                        <h1 className="text-sm font-bold uppercase tracking-widest text-white">Grading Console</h1>
-                        <p className="text-[10px] text-neutral-500 font-mono">Assignment #{submission.assignment_number}</p>
+                    <div className="h-4 w-px bg-neutral-800"></div>
+                    <h1 className="text-sm font-bold text-white tracking-wide uppercase">Grading Console</h1>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    <div className="text-[10px] text-neutral-600 font-mono hidden md:block">
+                        SESSION ID: {submission.id.substring(0,8).toUpperCase()}
+                    </div>
+                    <div className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border flex items-center gap-2 ${submission.status === 'pending' ? 'border-amber-500/20 text-amber-500 bg-amber-500/5' : submission.status === 'approved' ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5' : 'border-red-500/20 text-red-500 bg-red-500/5'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${submission.status === 'pending' ? 'bg-amber-500 animate-pulse' : submission.status === 'approved' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        {submission.status}
                     </div>
                 </div>
-                <div className="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
-                    <User size={14} className="text-[#d90238]"/>
-                    <span className="text-xs font-bold">{submission.profiles?.full_name || 'Unknown Student'}</span>
-                </div>
-            </header>
+            </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            {/* 2. SPLIT BODY */}
+            <div className="flex-1 flex min-h-0">
                 
-                {/* --- MAIN COMPARISON AREA (The Critical Part) --- */}
-                <div className="flex-1 bg-[#020202] relative border-r border-white/10">
-                    {/* HERE IS YOUR ORIGINAL COMPARISON TOOL */}
+                {/* LEFT: Comparison Tool (Image Slider) */}
+                <div className="flex-1 relative bg-black min-w-0">
                     <ImageSlider 
                         referenceImage={submission.reference_image_url} 
                         renderImage={submission.render_image_url} 
-                        className="w-full h-full"
+                        className="h-full w-full border-0 rounded-none"
                     />
                 </div>
 
-                {/* --- RIGHT SIDEBAR: FEEDBACK & GRADING --- */}
-                <div className="w-96 bg-[#0a0a0a] flex flex-col shrink-0 z-40 shadow-2xl border-l border-white/5">
+                {/* RIGHT: Sidebar */}
+                <div className="w-[380px] bg-[#0a0a0a] border-l border-neutral-800 flex flex-col shrink-0 z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
                     
-                    {/* Student Info & Message */}
-                    <div className="p-6 border-b border-white/10">
-                        <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <MessageSquare size={12}/> Student Note
-                        </h3>
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                            <p className="text-sm text-neutral-300 italic leading-relaxed">
-                                "{submission.student_message || 'No message provided.'}"
-                            </p>
-                            <div className="mt-3 flex items-center gap-2 text-[10px] text-neutral-600 font-mono">
-                                <Calendar size={10}/>
-                                Submitted: {new Date(submission.created_at).toLocaleDateString()}
+                    {/* Student Info */}
+                    <div className="p-6 border-b border-neutral-800">
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-white mb-1">{submission.profiles?.full_name || 'Student'}</h2>
+                                <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono">
+                                    <span className="bg-neutral-800 px-1.5 py-0.5 rounded text-[10px]">LVL {submission.assignment_number}</span>
+                                    <span>{submission.profiles?.email}</span>
+                                </div>
                             </div>
+                            <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-neutral-500">
+                                <User size={20} />
+                            </div>
+                        </div>
+
+                        {/* Message */}
+                        <div className="bg-[#111] border border-neutral-800 rounded-lg p-4 relative group hover:border-neutral-700 transition-colors">
+                            <div className="absolute -top-2 left-4 px-2 bg-[#0a0a0a] text-[10px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                                <MessageSquareQuote size={10} /> Student Note
+                            </div>
+                            <p className="text-sm text-neutral-300 italic font-serif leading-relaxed">
+                                "{submission.student_message || "No message attached."}"
+                            </p>
                         </div>
                     </div>
 
-                    {/* Teacher Feedback Input */}
-                    <div className="flex-1 p-6 flex flex-col min-h-0">
-                        <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3">
-                            Instructor Feedback
-                        </h3>
+                    {/* Feedback & Actions */}
+                    <div className="flex-1 flex flex-col p-6 bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                                <PenTool size={12} /> Instructor Feedback
+                            </h3>
+                        </div>
+                        
                         <textarea 
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
-                            placeholder="Write your feedback here... (Required if rejecting)"
-                            className="flex-1 w-full bg-black border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#d90238] focus:outline-none resize-none placeholder:text-neutral-700 font-medium"
+                            placeholder="Enter detailed feedback here. Required for rejection."
+                            className="flex-1 w-full bg-[#0f0f0f] border border-neutral-800 rounded-lg p-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-700 resize-none mb-6 transition-all"
                         />
-                    </div>
 
-                    {/* Grading Buttons */}
-                    <div className="p-6 border-t border-white/10 bg-[#0f0f0f] space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3 mt-auto">
                             <button 
                                 onClick={() => handleDecision('rejected')}
                                 disabled={isProcessing}
-                                className="flex items-center justify-center gap-2 py-3 rounded-lg border border-[#d90238] text-[#d90238] hover:bg-[#d90238] hover:text-white transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
+                                className="h-12 rounded-sm border border-red-900/30 bg-red-950/5 hover:bg-red-900/20 hover:border-red-500/50 text-red-600 hover:text-red-500 transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isProcessing ? <Loader2 className="animate-spin" size={16}/> : <><XCircle size={16}/> Reject</>}
+                                {isProcessing ? <Loader2 className="animate-spin"/> : <><X size={16} className="group-hover:scale-110 transition-transform"/> Reject</>}
                             </button>
-                            
                             <button 
                                 onClick={() => handleDecision('approved')}
                                 disabled={isProcessing}
-                                className="flex items-center justify-center gap-2 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/20 disabled:opacity-50"
+                                className="h-12 rounded-sm bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg hover:shadow-emerald-900/30 transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isProcessing ? <Loader2 className="animate-spin" size={16}/> : <><CheckCircle size={16}/> Approve</>}
+                                {isProcessing ? <Loader2 className="animate-spin"/> : <><Check size={16} className="group-hover:scale-110 transition-transform"/> Approve</>}
                             </button>
                         </div>
-                        <p className="text-[10px] text-center text-neutral-600 mt-2">
-                            Approve = Next Level | Reject = Re-upload
-                        </p>
                     </div>
-
                 </div>
             </div>
         </div>
