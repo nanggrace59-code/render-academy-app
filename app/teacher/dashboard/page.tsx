@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
 import { 
-  BookOpen, Search, CheckCircle, Clock, 
-  AlertCircle, ChevronRight, LayoutGrid, 
+  BookOpen, Clock, ChevronRight, LayoutGrid, 
   ArrowLeft, LogOut, Loader2
 } from 'lucide-react';
 
@@ -23,26 +22,31 @@ export default function TeacherDashboard() {
             const { count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'teacher');
             setStats({ pending: pendingCount || 0, students: studentCount || 0 });
 
-            // 2. Fetch ALL Submissions (We filter later)
+            // 2. Fetch ALL Submissions
             const { data: subs } = await supabase
                 .from('submissions')
                 .select(`*, profiles:user_id (full_name, email, enrolled_class, current_level)`)
                 .order('created_at', { ascending: false });
 
-            if (subs) setSubmissions(subs);
+            if (subs) {
+                console.log("Raw Submissions Data:", subs); // For Debugging
+                setSubmissions(subs);
+            }
             setLoading(false);
         };
         loadDashboard();
     }, []);
 
     // --- FIX: ROBUST FILTERING ---
-    // This allows partial matching. If student class is "Master Class" or "master_class", both will work.
     const filteredSubmissions = submissions.filter(sub => {
         if (!selectedClass) return false;
-        const studentClass = (sub.profiles?.enrolled_class || '').toLowerCase().replace(/_/g, ' '); // Convert underscores to spaces
         
+        // Get student class and convert to lowercase for easy matching
+        const studentClass = (sub.profiles?.enrolled_class || '').toLowerCase();
+        
+        // Logic: If user selects Master Class, show anything related to 'master', 'arch', or even empty class names (fallback)
         if (selectedClass === 'master_class') {
-            return studentClass.includes('master') || studentClass.includes('arch');
+            return studentClass.includes('master') || studentClass.includes('arch') || studentClass === ''; 
         }
         if (selectedClass === 'visualization_class') {
             return studentClass.includes('vis') || studentClass.includes('render');
@@ -76,7 +80,7 @@ export default function TeacherDashboard() {
             <div className="flex-1 p-8 w-full flex flex-col items-center">
                 
                 {!selectedClass ? (
-                    // 1. CLASS SELECTION VIEW (Original Card Design)
+                    // 1. CLASS SELECTION VIEW
                     <div className="w-full max-w-4xl flex flex-col gap-8 animate-in fade-in">
                         <div className="text-center space-y-2 mb-4">
                             <h2 className="text-2xl font-bold text-white">Select Class</h2>
@@ -119,7 +123,7 @@ export default function TeacherDashboard() {
                         </div>
                     </div>
                 ) : (
-                    // 2. SUBMISSION LIST VIEW (With Back Button)
+                    // 2. SUBMISSION LIST VIEW
                     <div className="w-full max-w-5xl animate-in fade-in slide-in-from-right-8">
                         <button 
                             onClick={() => setSelectedClass(null)}
@@ -141,9 +145,9 @@ export default function TeacherDashboard() {
                             ) : filteredSubmissions.length === 0 ? (
                                 <div className="p-12 text-center">
                                     <p className="text-neutral-500 text-sm">No submissions found for this class.</p>
-                                    {/* DEBUG INFO: This helps us confirm if data exists but filter is wrong */}
+                                    {/* DEBUGGING HELP: Show total submissions to confirm connection exists */}
                                     <p className="text-neutral-700 text-[10px] mt-2">
-                                        (System Check: Found {submissions.length} total submissions in database)
+                                        (System Check: Connected. Found {submissions.length} total submissions in database)
                                     </p>
                                 </div>
                             ) : (
