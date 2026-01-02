@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
-import { ImageSlider } from '@/components/ImageSlider'; // Your Comparison Tool
+// IMPORTANT: Comparison Tool
+import { ImageSlider } from '@/components/ImageSlider'; 
 import { 
   ArrowLeft, Check, X, MessageSquareQuote, PenTool, User, Loader2
 } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                 .single();
 
             if (error || !data) {
+                console.error("Error fetching:", error);
                 router.push('/teacher/dashboard');
             } else {
                 setSubmission(data);
@@ -43,6 +45,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
 
         setIsProcessing(true);
         try {
+            // Update submission status
             const { error } = await supabase.from('submissions').update({ 
                 status: status, 
                 teacher_comment: feedback,
@@ -51,9 +54,15 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
 
             if (error) throw error;
 
+            // If Approved, Level Up
             if (status === 'approved') {
-                await supabase.from('profiles').update({ current_level: submission.assignment_number + 1 }).eq('id', submission.user_id);
+                const nextLevel = (submission.assignment_number || 1) + 1;
+                await supabase.from('profiles')
+                    .update({ current_level: nextLevel })
+                    .eq('id', submission.user_id);
             }
+
+            // Return to dashboard
             router.push('/teacher/dashboard');
         } catch (err) {
             console.error(err);
@@ -63,12 +72,13 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
         }
     };
 
-    if (loading || !submission) return <div className="h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-500"/></div>;
+    if (loading) return <div className="h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-[#d90238]" size={32}/></div>;
+    if (!submission) return null;
 
     return (
         <div className="absolute inset-0 flex flex-col bg-[#050505] overflow-hidden font-sans">
             
-            {/* 1. HEADER */}
+            {/* 1. HEADER (Matches Screenshot) */}
             <div className="h-14 bg-[#0a0a0a] border-b border-neutral-800 flex items-center justify-between px-6 shrink-0 z-20">
                 <div className="flex items-center gap-4">
                     <button onClick={() => router.back()} className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest group">
@@ -92,7 +102,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
             {/* 2. SPLIT BODY */}
             <div className="flex-1 flex min-h-0">
                 
-                {/* LEFT: Comparison Tool (Image Slider) */}
+                {/* LEFT: Comparison Tool (This is what you were missing!) */}
                 <div className="flex-1 relative bg-black min-w-0">
                     <ImageSlider 
                         referenceImage={submission.reference_image_url} 
@@ -101,7 +111,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                     />
                 </div>
 
-                {/* RIGHT: Sidebar */}
+                {/* RIGHT: Grading Sidebar */}
                 <div className="w-[380px] bg-[#0a0a0a] border-l border-neutral-800 flex flex-col shrink-0 z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
                     
                     {/* Student Info */}
@@ -119,7 +129,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                             </div>
                         </div>
 
-                        {/* Message */}
+                        {/* Student Note */}
                         <div className="bg-[#111] border border-neutral-800 rounded-lg p-4 relative group hover:border-neutral-700 transition-colors">
                             <div className="absolute -top-2 left-4 px-2 bg-[#0a0a0a] text-[10px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
                                 <MessageSquareQuote size={10} /> Student Note
@@ -130,7 +140,7 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                         </div>
                     </div>
 
-                    {/* Feedback & Actions */}
+                    {/* Teacher Feedback & Buttons */}
                     <div className="flex-1 flex flex-col p-6 bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
@@ -151,16 +161,19 @@ export default function ReviewPage({ params }: { params: { id: string } }) {
                                 disabled={isProcessing}
                                 className="h-12 rounded-sm border border-red-900/30 bg-red-950/5 hover:bg-red-900/20 hover:border-red-500/50 text-red-600 hover:text-red-500 transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isProcessing ? <Loader2 className="animate-spin"/> : <><X size={16} className="group-hover:scale-110 transition-transform"/> Reject</>}
+                                {isProcessing ? <Loader2 className="animate-spin"/> : <><X size={16} className="group-hover:scale-110 transition-transform"/> REJECT</>}
                             </button>
                             <button 
                                 onClick={() => handleDecision('approved')}
                                 disabled={isProcessing}
                                 className="h-12 rounded-sm bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg hover:shadow-emerald-900/30 transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isProcessing ? <Loader2 className="animate-spin"/> : <><Check size={16} className="group-hover:scale-110 transition-transform"/> Approve</>}
+                                {isProcessing ? <Loader2 className="animate-spin"/> : <><Check size={16} className="group-hover:scale-110 transition-transform"/> APPROVE</>}
                             </button>
                         </div>
+                        <p className="text-[9px] text-neutral-600 text-center mt-3 font-mono">
+                            Action will notify student immediately.
+                        </p>
                     </div>
                 </div>
             </div>
