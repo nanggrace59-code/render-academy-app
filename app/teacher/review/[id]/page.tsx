@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabaseClient';
-import { ImageSlider } from '@/components/ImageSlider';
+import { ImageSlider } from '@/components/ImageSlider'; // <--- THIS IS YOUR COMPARISON TOOL
 import { 
   ArrowLeft, Check, X, MessageSquareQuote, PenTool, User, Loader2
 } from 'lucide-react';
@@ -19,7 +19,6 @@ export default function GradingConsole({ params }: { params: { id: string } }) {
         const fetchData = async () => {
             // 1. Get Submission
             const { data: sub, error } = await supabase.from('submissions').select('*').eq('id', params.id).single();
-            
             if (error || !sub) {
                 router.push('/teacher/dashboard');
                 return;
@@ -89,11 +88,15 @@ export default function GradingConsole({ params }: { params: { id: string } }) {
                 </div>
             </div>
 
-            {/* Split Body */}
+            {/* SPLIT LAYOUT: LEFT = COMPARISON TOOL, RIGHT = GRADING */}
             <div className="flex-1 flex min-h-0">
-                {/* Left: Comparison Tool */}
+                {/* Left: Comparison Tool (Image Slider) */}
                 <div className="flex-1 relative bg-black min-w-0">
-                    <ImageSlider referenceImage={submission.reference_image_url} renderImage={submission.render_image_url} className="h-full w-full border-0 rounded-none"/>
+                    <ImageSlider 
+                        referenceImage={submission.reference_image_url} 
+                        renderImage={submission.render_image_url} 
+                        className="h-full w-full border-0 rounded-none"
+                    />
                 </div>
 
                 {/* Right: Sidebar */}
